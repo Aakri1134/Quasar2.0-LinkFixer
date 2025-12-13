@@ -1,24 +1,10 @@
 import { Link } from "react-router"
 import logo from "../../assets/logo.png"
-import { useEffect, useState } from "react"
 
 const DashboardHeader = () => {
-  const [isScrolled, setIsScrolled] = useState<boolean>(false)
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20)
-    }
-
-    window.addEventListener("scroll", handleScroll)
-    return () => window.removeEventListener("scroll", handleScroll)
-  }, [])
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-9999 transition-all duration-300 ${
-        isScrolled
-          ? "bg-[#4b4b4b] backdrop-blur-md shadow-lg"
-          : "bg-transparent"
-      }`}
+      className={`top-0 left-0 right-0 z-9999 bg-[#1b1b1b] transition-all duration-300`}
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
