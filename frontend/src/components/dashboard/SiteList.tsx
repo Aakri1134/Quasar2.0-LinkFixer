@@ -1,15 +1,40 @@
-import { useRef } from "react"
+import { useRef, useState } from "react"
 import { useDashboardContext } from "../../context/dashboardContext"
 import SiteCard from "./SiteCard"
+import ModalPortal from "../Modal/ModalPortal"
+import AddNewModal from "./AddNewModal"
 
 const SiteList = () => {
   const inputRef = useRef<HTMLInputElement>(null)
   const dashboardContext = useDashboardContext()
+  const [addNewModalVisible, setAddNewModalVisible] = useState<boolean>(true)
+
+  function toggleAddNewModalVisible() {
+    setAddNewModalVisible((x) => !x)
+  }
+
   return (
-    <section className=" w-screen items-center justify-center h-48 flex flex-1" style={{
-        backgroundImage: 'radial-gradient(circle, #e0e7ff 1px, transparent 1px)',
-        backgroundSize: '20px 20px'
-    }}>
+    <section
+      className=" w-screen items-center justify-center h-48 flex flex-1"
+      style={{
+        backgroundImage:
+          "radial-gradient(circle, #e0e7ff 1px, transparent 1px)",
+        backgroundSize: "20px 20px",
+      }}
+    >
+      {addNewModalVisible && (
+        <ModalPortal
+        style={{
+            backgroundColor : "rgba(10,10,10,0.4)",
+            zIndex : 9999,
+            display : "flex",
+            justifyContent : "center",
+            alignItems : "center"
+        }}
+        hideModal={toggleAddNewModalVisible}>
+          <AddNewModal />
+        </ModalPortal>
+      )}
       <div className=" max-w-5xl py-5 px-4 w-full flex flex-col bg-white h-full justify-start items-center">
         <div className=" w-[90%] flex flex-col h-18 sm:w-full sm:h-fit sm:flex-row justify-between">
           <input
@@ -21,7 +46,10 @@ const SiteList = () => {
             <button className=" bg-[#f2f2f2] border-2 border-[#f2f2f2] hover:bg-white px-4 duration-100 rounded-md font-semibold text-md">
               Starred
             </button>
-            <button className=" bg-green-500 hover:bg-green-400 border-2 border-transparent hover:border-white px-4 duration-100 rounded-md font-semibold text-white text-md">
+            <button
+              onClick={toggleAddNewModalVisible}
+              className=" bg-green-500 hover:bg-green-400 border-2 border-transparent hover:border-white px-4 duration-100 rounded-md font-semibold text-white text-md"
+            >
               Add Website +
             </button>
           </div>
