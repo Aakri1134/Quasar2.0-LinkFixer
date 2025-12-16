@@ -133,8 +133,7 @@ UserSchema.methods.generateVerificationToken = function () {
   const jti = uuidv4();
   const verificationToken = jwt.sign(
     { id: this._id, email: this.email, iss: "link-fixer", jti },
-    process.env.EMAIL_SECRET,
-    { expiresIn: "24h" }
+    process.env.EMAIL_SECRET
   );
 
   this.verificationToken = verificationToken;
