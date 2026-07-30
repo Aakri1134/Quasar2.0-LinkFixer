@@ -5,7 +5,7 @@ import type { CheckLinkResult, CrawlSession, VisitLinkResult } from "./types.js"
 export class PageUtilities {
   // opens the link in the page for futher actions using the page
 
-  constructor(private readonly page : Page, private readonly session : CrawlSession){}
+  constructor(private readonly page : Page, private readonly utilities : CrawlSession["utilities"], private readonly baseDomain : string | undefined){}
 
   private async openLinkInPage( link: string ): Promise<CheckLinkResult> {
     try {
@@ -58,10 +58,10 @@ export class PageUtilities {
   }
 
   // Visits a link and collects any same-domain URLs found on the page.
-  private async visitLink( link: string, openResult : CheckLinkResult ): Promise<VisitLinkResult> {
+  async visitLink( link: string, openResult : CheckLinkResult ): Promise<VisitLinkResult> {
     const parsedLink = new URL(link)
     
-    if (parsedLink.hostname !== this.session.baseDomain) {
+    if (parsedLink.hostname !== this.baseDomain) {
       console.log(`[${config.ID}] :: External Link : `, link)
       if (!openResult.ok) {
         console.log(`[${config.ID}] :: Link failed : `, link)

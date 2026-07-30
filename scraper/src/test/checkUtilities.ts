@@ -1,12 +1,13 @@
 import puppeteer from "puppeteer";
-import { createPage, visitLink } from "../init/linkHelpers.js";
+import { createPage } from "../init/linkHelpers.js";
 import fs from "fs"
 import path from "path"
 import { browserOptions } from "../utils/browserOptions.js";
+import { PageUtilities } from "../init/Utilities.js";
 // check scraper
 
 
-async function checkScraper(){
+async function checkUtilities(){
     
     const logsPath = path.join(process.cwd(), 'src', 'utils', 'logs.json')
     console.log(logsPath)
@@ -16,13 +17,14 @@ async function checkScraper(){
     const maxDepth = 2;
     const testUrls = "https://iiitranchi.ac.in"
     const parsedURL = new URL(testUrls)
-
+    
     const testFns = async (url : string, baseDomain : string, depth : number) => {
         if(depth >= maxDepth) return
         if(visitedLinks.has(url)) return
-
+        
         const page = await createPage(browser)
-        const res = await visitLink(url, page, baseDomain)
+        const utilities = new PageUtilities(page, ["visit"], parsedURL.host)
+        const res = await utilities.handleLink(url)
         
         visitedLinks.add(res.redirectedTo)
         finalResult.push(res)
@@ -47,7 +49,7 @@ async function checkScraper(){
 
 console.log("Hello")
 try{
-    checkScraper()
+    checkUtilities()
 }catch(err){
     console.error(err)
 }

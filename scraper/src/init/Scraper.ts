@@ -109,7 +109,7 @@ export class Scraper {
   }
 
   // Opens the browser and prepares the page pool.
-  private async createSession(
+  async createSession(
     domain: string,
     linkQueue: string,
     authentication: string | undefined,
@@ -380,7 +380,7 @@ export class Scraper {
         // impossible condition due to prefetch limitation on the channel
         throw new Error("No page available")
       }
-      const utilities = new PageUtilities(page, session)
+      const utilities = new PageUtilities(page, session.utilities, session.baseDomain)
 
       const data = JSON.parse(msg.content.toString()) as LinkMessage
       if (data.link === undefined || data.depth === undefined) {
