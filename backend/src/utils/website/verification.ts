@@ -1,6 +1,6 @@
 import axios from "axios"
 import jwt from "jsonwebtoken"
-import { Website } from "../../models/user.js"
+import { Website } from "../../models/website.js"
 
 type VerificationResult = {
   success: boolean

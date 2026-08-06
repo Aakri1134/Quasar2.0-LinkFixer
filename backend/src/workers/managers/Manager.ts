@@ -6,7 +6,8 @@ import * as amqp from "amqplib"
 import { connectRedis } from "../../database/connectRedis.js"
 import { StatusSubscriber } from "./StatusSubscriber.js"
 import type { BrowserQueueMessage, WebsiteQueueMessage } from "../../modules/website/website.types.js"
-import { Website } from "../../models/user.js"
+import { Website } from "../../models/website.js"
+import { Checks } from "../../models/check.js"
 
 export class Manager {
   private browserChannelQueue = "available_browsers"
@@ -15,17 +16,23 @@ export class Manager {
   private constructor(
     private readonly queue: string,
     private readonly nextQueue: string,
-    private readonly instances: number,
-    private readonly maxLimit: number,
+    private readonly instances: number, // number of srapers to be used
+    private readonly maxLimit: number, // max number of links to be scraped 
     private readonly redis: Redis,
     private readonly linkChannel: amqp.Channel,
     private readonly browserChannel: amqp.Channel,
     private readonly channel: amqp.Channel,
   ) {
     this.websiteQueue = this.queue + "_domain"
+    console.log({
+      queue, 
+      nextQueue, 
+      instances, 
+      maxLimit, 
+    })
   }
 
-  private async createChannels() {
+  private static async createChannels() {
     const connection = await amqp.connect(env.RABBITMQ_URL)
 
     let linkChannel, browserChannel, channel
@@ -79,7 +86,6 @@ export class Manager {
       this.channel.ack(msg_website)
       return
     }
-
     
     // Initialize active browser counter for this domain
     await this.redis.set(activeBrowserKey, 0)
@@ -104,6 +110,10 @@ export class Manager {
 
     let browserConsumerTag: string | undefined
 
+    await this.redis.set(`${domain}_pause_status`, 0)
+    await this.redis.del(`${domain}_checkedLinks`)
+    await this.redis.del(`${domain}_results`)
+
     this.browserChannel.consume(this.browserChannelQueue,
         async (msg_browser: amqp.ConsumeMessage | null) => {
           if (!msg_browser) {
@@ -122,9 +132,6 @@ export class Manager {
 
           console.log(`Browser :::::::::::::::::::::::::::::::::::::: `, browser)
 
-          await this.redis.set(`${domain}_pause_status`, 0)
-          await this.redis.del(`${domain}_checkedLinks`)
-          await this.redis.del(`${domain}_results`)
           await this.redis.publish(
             `${uid}_domain`,
             JSON.stringify({ domain, limit, maxPages, linkQueue, authentication }),
@@ -165,10 +172,7 @@ export class Manager {
                     message: `onFailure() called for ${browser.id}`,
                   })
 
-                await this.redis.rpush(
-                  `reports`,
-                  data
-                )
+                await this.redis.rpush(`reports`,data)
                 console.log(data)
                 try {
                   if (browserConsumerTag) await this.browserChannel.cancel(browserConsumerTag)
@@ -246,13 +250,14 @@ export class Manager {
             // after completion confirmation check if links queue is empty, If not empty push to next priority_queue
             const info = await this.linkChannel.checkQueue(linkQueue)
             console.log("ACTIVE BROWSER 0")
+            const resultsList = await this.redis.lrange(`${domain}_results`, 0, -1)
 
-            if (info.messageCount === 0) {
+            if (info.messageCount === 0 || resultsList.length >= this.maxLimit) {
               console.log(`EXECUTION COMPLETED :::: ${domain}`)
-              const resultsList = await this.redis.lrange(`${domain}_results`, 0, -1)
               await this.redis.del(`${domain}_results`)
               const results = resultsList.map((item) => JSON.parse(item))
-              currWebsite.checks.push({ checkedLinks: results, checkedAt: new Date() } as any)
+              const check = new Checks({ checkedLinks: results, checkedAt: new Date(), manager : this.queue})
+              currWebsite.checks.push(check.id)
 
               console.log(results)
 
@@ -264,13 +269,10 @@ export class Manager {
                 currWebsite.estimatedTime[estimatedTimeKey] = newApproximateTime
               }
 
-              console.log("New Approximate time ::::::::::::::::::: ", newApproximateTime)
-
               const isCancelled = await this.redis.getdel(queuedKey)
               if (Number(isCancelled) === 1 || isCancelled === "1") {
-                console.log("Saving to db")
+                await check.save()
                 await currWebsite.save()
-                console.log("Saved to db")
               }
 
               await this.redis.del(activeBrowserKey)
@@ -352,8 +354,6 @@ export class Manager {
             browser_message_batch = []
           }
 
-          // Nothing extra to do on a heartbeat; StatusSubscriber already
-          // resets its own "no news" timer internally.
           const onWorking = () => {}
 
           statusSubscriber.subscribe(onWorking, onComplete, onFailure)
@@ -371,8 +371,7 @@ export class Manager {
   static async init() {
     await connectDB()
     const redis = await connectRedis()
-    const manager = new Manager("", "", 0, 0, redis, null as any, null as any, null as any)
-    const { linkChannel, browserChannel, channel } = await manager.createChannels()
+    const { linkChannel, browserChannel, channel } = await this.createChannels()
     return new Manager( env.QUEUE, env.NEXT_QUEUE, env.INSTANCES, env.LINK_LIMIT, redis, linkChannel, browserChannel, channel )
   }
 

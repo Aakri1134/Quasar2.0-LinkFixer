@@ -9,7 +9,7 @@ async function testManager(domain: string) {
   await connectDB()
   if (process.env.MODE_NODE !== "dev") {
     return {
-      statusCode: 123,
+      statusCode: 420,
       body: { you: "naughty" },
     }
   }
@@ -65,5 +65,4 @@ async function testManager(domain: string) {
   process.exit(1)
 }
 
-console.log(process.env.RABBITMQ_URL_LOCAL)
 testManager("https://iiitranchi.ac.in")

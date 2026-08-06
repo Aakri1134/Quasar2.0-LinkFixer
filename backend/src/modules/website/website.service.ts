@@ -5,6 +5,7 @@ import { env } from "../../config/env.js"
 import enqueue from "../../utils/scheduler/enqueue.js"
 import { parseSitemap } from "../../utils/website/sitemap.js"
 import type { WebsiteRepository } from "./website.repository.js"
+import { normalizeHostname } from "../../utils/normalizeHostname.js"
 
 export class WebsiteError extends Error {
   constructor(
@@ -40,7 +41,7 @@ export class WebsiteService {
       throw new WebsiteError(`Invalid URL format: ${link}`, 400)
     }
 
-    const domain = url.hostname
+    const domain = normalizeHostname(url.hostname)
     const response = await axios.get(link, {
       timeout: 10000,
       headers: { "User-Agent": "LinkFixerBot/1.0" },
@@ -284,23 +285,6 @@ export class WebsiteService {
     const website = await this.repo.findWebsiteById(websiteID)
     if (website === null) {
       throw new WebsiteError("Website not found 2", 404)
-    }
-
-    if (!force && website.checks.length > 0) {
-      let finalCheck = website.checks[0] as any
-
-      for (const check of website.checks) {
-        if (Number(check.checkedAt) > Number(finalCheck.checkedAt)) {
-          finalCheck = check
-        }
-      }
-
-      if (Number(Date.now()) - Number(finalCheck.checkedAt) > 3 * 60 * 60 * 1000) {
-        return {
-          msg: "Recent Results",
-          data: finalCheck,
-        }
-      }
     }
 
     const domain = website.domain

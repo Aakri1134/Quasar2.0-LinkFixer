@@ -1,4 +1,5 @@
-import { User, Website } from "../../models/user.js"
+import { User } from "../../models/user.js"
+import { Website } from "../../models/website.js"
 
 export class WebsiteRepository {
   // Loads a user document by id.

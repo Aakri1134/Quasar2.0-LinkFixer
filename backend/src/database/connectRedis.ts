@@ -12,7 +12,7 @@ export async function connectRedis() {
 
       const onError = (error: Error) => {
         console.log("Error in connection to Redis")
-        console.error(error.message)
+        console.log(error)
         cleanup()
         reject(error)
       }

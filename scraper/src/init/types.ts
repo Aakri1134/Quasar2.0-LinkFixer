@@ -41,6 +41,7 @@ export type CheckLinkResult = {
   statusText: string
   ok: boolean
   redirectedTo?: string
+  response_time?: number
 }
 
 export type VisitLinkResult = CheckLinkResult & {
@@ -48,9 +49,19 @@ export type VisitLinkResult = CheckLinkResult & {
   urlsToVisit?: string[]
 }
 
+export type PageMetrics =  {
+  lcp?:     number  
+  cls?:     number
+  fcp?:     number  
+  ttfb?:    number  
+  domLoad?: number  
+  loadTime?:number 
+}
+
 export type LinkMessage = {
   link?: string
   depth?: number
+  retryCount ?: number
 }
 
 export type LinkRecord = {
@@ -60,6 +71,7 @@ export type LinkRecord = {
   status?: number
   statusText?: string
   timestamp: number
+  analytics?: PageMetrics 
 }
 
 /**
@@ -68,4 +80,31 @@ export type LinkRecord = {
  * eval_schema : visit a page and check validity of metadata for a page using AI LLM parser
  * response_time : visit a page and record the response_times for the page, to five a value for the frontend latencies
  */
-export const SCRAPER_UTILITIES = ["visit", "eval_metadata", "eval_schema", "response_time"] as const
+export const SCRAPER_UTILITIES = ["visit", "eval_metadata", "eval_schema", "analytics"] as const
+
+export type Utility = typeof SCRAPER_UTILITIES[number]
+
+// Maps each utility to the extra fields it contributes to the result
+export interface UtilityResultMap {
+  visit: VisitLinkResult
+  analytics: { analytics: PageMetrics | null }
+  eval_metadata: { metadata: any | null }  // define these as you build them
+  eval_schema: { schema: any | null }
+}
+
+// Merges result types for all utilities in the array
+export type HandleLinkResult<U extends Utility[]> =
+  (U extends (infer T)[]
+    ? T extends keyof UtilityResultMap
+      ? UtilityResultMap[T]
+      : never
+    : never) extends infer R
+  ? { [K in keyof R]: R[K] }  // flatten intersection to object
+  : never
+
+// More readable: explicit intersection builder
+export type MergeUtilityResults<U extends Utility[]> =
+  UnionToIntersection<UtilityResultMap[U[number]]>
+
+type UnionToIntersection<U> = 
+  (U extends any ? (x: U) => void : never) extends (x: infer I) => void ? I : never
