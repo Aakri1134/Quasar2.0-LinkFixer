@@ -1,13 +1,24 @@
 import { createContext, useContext, useEffect, useState } from "react"
 import { validator } from "../utils/validator"
-import { verifyAuthUser } from "../api/auth/verifyAuth"
+import {
+  useVerifyAuth,
+  verifyAuthQueryKey,
+} from "@/hooks/queries/auth/useVerifyAuth"
+import { useQueryClient } from "@tanstack/react-query"
 
 type userContextType = {
   email?: string
   id?: string
-  loading : boolean
-  updateUser: (email: string, id: string) => boolean
-  checkLogin : () => Promise<void>
+  username?: string
+  emailVerified?: boolean
+  loading: boolean
+  updateUser: (prop: {
+    email: string
+    id: string
+    username: string
+    emailVerified: boolean
+  }) => boolean
+  checkLogin: () => Promise<void>
 }
 
 const UserContext = createContext<userContextType | undefined>(undefined)
@@ -19,43 +30,46 @@ export const UserContextProvider = ({
 }) => {
   const [email, setEmail] = useState<string | undefined>()
   const [id, setId] = useState<string | undefined>()
-  const [loading, setLoading] = useState<boolean>(false)
+  const [username, setUsername] = useState<string | undefined>()
+  const [emailVerified, setEmailVerified] = useState<boolean | undefined>()
+  const { data : verificationData, isLoading : loading } = useVerifyAuth()
+  const queryClient = useQueryClient()
 
-  function updateUser(email: string, id: string) {
+  const updateUser: userContextType["updateUser"] = ({ email, id, username, emailVerified }) => {
     if (validator(email, "email")) {
       setEmail(email)
       setId(id)
-      console.log("User updated ", email, " ", id)
+      setUsername(username)
+      setEmailVerified(emailVerified)
       return true
     }
     return false
   }
+
+  async function checkLogin() {
+    await queryClient.invalidateQueries({
+      queryKey: [verifyAuthQueryKey],
+    })
+  }
+
+  function clearContext(){
+    setEmail(undefined)
+    setId(undefined)
+    setUsername(undefined)
+    setEmailVerified(undefined)
+  }
+
   useEffect(() => {
-    setLoading(true)
-    checkLogin()
-  }, [])
-
-  async function checkLogin(){
-    const res = await verifyAuthUser()
-    console.log(res?.authenticated)
-    if(!res?.authenticated){
-        setEmail(undefined)
-        setId(undefined)
-    }else{
-        console.log(res.user)
-        setEmail(res.user.email)
-        setId(res.user.id)
+    console.log(verificationData?.authenticated)
+    if (!verificationData?.authenticated) {
+      clearContext()
+    } else {
+      console.log(verificationData.user)
+      updateUser(verificationData.user)
     }
-    setLoading(false)
-  }
+  }, [verificationData])
 
-  const value: userContextType = {
-    email,
-    id,
-    updateUser,
-    checkLogin,
-    loading
-  }
+  const value: userContextType = { email, id, emailVerified, username, updateUser, checkLogin, loading }
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>
 }
 

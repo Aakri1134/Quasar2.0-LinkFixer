@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react"
 import { useUserContext } from "./userContext"
-import getWebsites from "../api/user/getWebsites"
+import getWebsites from "../services/api/user/getWebsites"
 
 type dashboardContextType = {
   websites: any[]
