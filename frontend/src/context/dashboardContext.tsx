@@ -1,18 +1,11 @@
-import { createContext, useContext, useEffect, useState } from "react"
-import { useUserContext } from "./userContext"
-import getWebsites from "../services/api/user/getWebsites"
+import { createContext, useContext, useEffect } from "react"
+import useGetWebsites, { getWebsitesQueryKey } from "@/hooks/queries/website/useGetWebsites"
+import { useQueryClient } from "@tanstack/react-query"
+import type { getWebsiteForUserOutput } from "@/services/api/website/websiteService.types"
 
 type dashboardContextType = {
-  websites: any[]
-//   currentWebsiteData: {
-//     id: string
-//     domain: string
-//     checkedLinks: any[]
-//     brokenLinks: any[]
-//     updatedAt: Date
-//     createdAt: Date
-//   }
-  fetchWebsites : () => Promise<void>
+  websites: getWebsiteForUserOutput["website"] | undefined
+  refetchWebsite : () => Promise<void>
 }
 
 const DashboardContext = createContext<dashboardContextType | undefined>(
@@ -24,31 +17,27 @@ export const DashboardContextProvider = ({
 }: {
   children: React.ReactNode
 }) => {
-
-    const userContext = useUserContext()
-
-    async function fetchWebsites(){
-        console.log("Fetching websites")
-        const res = await getWebsites()
-        if(!res){
-            setWebsites([])
-        }else{
-            setWebsites(res)
-            console.log("Set website")
-            console.log(res)
+    const {data : userWebsiteData, isLoading, isError, error} = useGetWebsites()
+    const queryClient = useQueryClient()
+    
+    const value : dashboardContextType= {
+        websites : userWebsiteData?.website,
+        refetchWebsite : async () => {
+            await queryClient.invalidateQueries({queryKey : [getWebsitesQueryKey]})
         }
     }
 
     useEffect(() => {
-        fetchWebsites()
-    }, [userContext?.email, userContext?.id])
+       console.log("user website data")
+        console.log(userWebsiteData)
+    }, [userWebsiteData])
 
-    const [websites, setWebsites] = useState<any[]>([])
-    
-    const value : dashboardContextType= {
-        websites,
-        fetchWebsites
-    }
+    useEffect(() => {
+         console.log("Error  ::: in dashborad context")
+        console.log(isError)
+        console.log(error)
+    }, [isError, error])
+
     return (<DashboardContext.Provider value={value}>
         {children}
     </DashboardContext.Provider>)

@@ -4,9 +4,9 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import banner from "../../assets/Untitled design-min.png"
 import logo from "../../assets/logo.png"
 import { useUserContext } from "../../context/userContext"
-// import { useNavigate } from "react-router"
+import { Link, useNavigate } from "react-router"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -21,7 +21,7 @@ export default function Signup() {
   const [formErrorMessage, setFormErrorMessage] = useState<string>("")
   const userContext = useUserContext()
   const { mutate: registerUser, isPending: loading } = useRegisterUser()
-  //   const navigate = useNavigate()
+    const navigate = useNavigate()
 
   const {
     register,
@@ -38,9 +38,9 @@ export default function Signup() {
   })
 
   useEffect(() => {
-    // if (userContext?.email !== undefined && userContext.id !== undefined) {
-    //   navigate("/dashboard")
-    // }
+    if (userContext?.email !== undefined && userContext.id !== undefined) {
+      navigate("/dashboard")
+    }
   }, [userContext?.email, userContext?.id])
 
   const onSubmit = (values: RegisterInput) => {
@@ -89,6 +89,10 @@ export default function Signup() {
           alt="logo"
           className="w-48 mt-4 md:m-0 md:max-w-80 md:w-auto md:px-10 md:mb-0 md:absolute md:top-10"
         />
+        <CardHeader className=" w-full px-3 md:px-6 ">
+            <h1 className=" text-xl md:text-2xl font-bold text-primary">Sign up</h1>
+            <p className=" text-sm md:text-md font-semibold text-black/50">Already have an account? <Link className="text-sb md:text-md font-bold px-1 text-primary" to="/login">Log In</Link></p>
+        </CardHeader>
         <CardContent className="w-full px-4 md:px-8">
           <form
             className=" w-full flex flex-col gap-2.5"
@@ -188,7 +192,7 @@ export default function Signup() {
             <Button
               type="submit"
               disabled={loading}
-              className="bg-primary hover:bg-primary-hover hover:-translate-0.5 active:translate-0 h-12 w-full text-white border-2 border-white hover:border-black text-base font-bold rounded-lg duration-300 transition-all"
+              className="mt-1 bg-primary hover:bg-primary-hover hover:-translate-0.5 active:translate-0 h-12 w-full text-white border-2 border-white hover:border-black text-base font-bold rounded-lg duration-300 transition-all"
             >
               {loading ? "Loading..." : "Sign Up"}
             </Button>

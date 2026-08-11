@@ -4,6 +4,7 @@ import { FEATURES, STEPS } from "./Home.utils"
 import { HomeSection } from "./sections/HeroSection"
 import TriColorMouseTrail from "@/components/background/MouseTrail"
 import { StepsSection } from "./sections/StepSection"
+import { Footer } from "@/components/footer/Footer"
 
 const Home = () => {
   return (
@@ -16,6 +17,7 @@ const Home = () => {
         items={FEATURES}
       />
       <StepsSection items={STEPS}/>
+      <Footer/>
     </TriColorMouseTrail>
   )
 }

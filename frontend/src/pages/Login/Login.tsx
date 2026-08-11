@@ -4,24 +4,24 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import banner from "../../assets/Untitled design-min.png"
 import logo from "../../assets/logo.png"
 import { useUserContext } from "../../context/userContext"
-import { useNavigate } from "react-router"
+import { Link, useNavigate } from "react-router"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import { loginSchema } from "@/utils/schemas/auth"
-import { useLoginUser } from "@/hooks/mutations/auth/useLoginUser"
 import type { LoginInput } from "@/services/api/auth/authService.types"
+import { useLoginUser } from "@/hooks/mutations/auth/useLoginUser"
 // import Typography from "../../components/background/Typography"
 
 export default function Signup() {
   const [formErrorState, setFormErrorState] = useState<boolean>(false)
   const [formErrorMessage, setFormErrorMessage] = useState<string>("")
   const userContext = useUserContext()
-  const {mutate : loginUser, isPending : loading} = useLoginUser()
-    const navigate = useNavigate()
+  const { mutate: loginUser, isPending: loading } = useLoginUser()
+  const navigate = useNavigate()
 
   const {
     register,
@@ -69,21 +69,25 @@ export default function Signup() {
     "border-red-400 focus-visible:ring-red-400/40 focus-visible:border-red-400"
 
   return (
-    <div
-      className=" w-full h-screen flex justify-center md:justify-start "
+    <main
+      className="w-full min-h-screen flex items-center justify-center md:justify-start bg-cover bg-center bg-no-repeat p-4 md:p-0"
       style={{
         backgroundImage: `url(${banner})`,
       }}
     >
-      <Card className="bg-white shadow-[8px_0px_3px_0px_rgba(0,0,0,0.3)] w-full flex flex-col h-screen items-center px-6 py-10 md:min-w-[340px] md:w-[22%] md:h-screen justify-center relative rounded-none border-0">
+      <Card className="bg-white shadow-xl rounded-2xl w-full max-w-sm flex flex-col items-center relative md:shadow-[8px_0px_3px_0px_rgba(0,0,0,0.3)] md:w-[380px] md:min-w-0 md:max-w-none md:h-screen md:justify-center md:rounded-none md:border-0 md:mx-0">
         <img
           src={logo}
           alt="logo"
-          className=" w-60 left-6 m-0 p-0 absolute top-10"
+          className="w-48 mt-4 md:m-0 md:max-w-80 md:w-auto md:px-10 md:mb-0 md:absolute md:top-10"
         />
-        <CardContent className="w-full max-w-[340px] p-0">
+        <CardHeader className=" w-full px-3 md:px-6 ">
+            <h1 className=" text-xl md:text-2xl font-bold text-primary">Login</h1>
+            <p className=" text-sm md:text-md font-semibold text-black/50">New User? <Link className="text-sb md:text-md font-bold px-1 text-primary" to="/signup">Sign up</Link></p>
+        </CardHeader>
+        <CardContent className="w-full px-4 md:px-8">
           <form
-            className=" w-full flex flex-col gap-4"
+            className=" w-full flex flex-col gap-2.5"
             onSubmit={handleSubmit(onSubmit, onInvalid)}
           >
             <div className="flex flex-col gap-1.5">
@@ -128,7 +132,7 @@ export default function Signup() {
                 placeholder="Enter password"
                 type="password"
                 className={cn(
-                  "h-12 rounded-lg text-sm border-neutral-300 focus-visible:ring-emerald-600/30 focus-visible:border-emerald-600",
+                  "h-12 rounded-lg text-sm border-neutral-300 focus-visible:ring-emerald-600/40 focus-visible:border-emerald-600",
                   errors.password && errorInputClass,
                 )}
                 {...passwordField}
@@ -149,13 +153,13 @@ export default function Signup() {
             <Button
               type="submit"
               disabled={loading}
-              className="bg-amber-500 h-12 active:translate-1 w-full text-white border-2 border-white translate-1 hover:translate-0 hover:border-black text-base font-bold rounded-lg duration-300 transition-all mt-1"
+              className="mt-1 bg-primary hover:bg-primary-hover hover:-translate-0.5 active:translate-0 h-12 w-full text-white border-2 border-white hover:border-black text-base font-bold rounded-lg duration-300 transition-all"
             >
               {loading ? "Loading..." : "Login"}
             </Button>
           </form>
 
-          <div className="flex items-center gap-3 w-full my-5">
+          <div className="flex items-center gap-1 w-full my-2">
             <Separator className="flex-1 bg-neutral-300" />
             <span className="text-neutral-400 text-xs uppercase tracking-wide shrink-0">
               or
@@ -165,7 +169,7 @@ export default function Signup() {
 
           <Button
             onClick={() => {}}
-            className="bg-amber-500 h-12 w-full active:translate-1 text-white border-2 border-white translate-1 hover:translate-0 hover:border-black text-base font-bold rounded-lg duration-300 transition-all"
+            className="bg-primary hover:bg-primary-hover hover:-translate-0.5 active:translate-0 h-12 w-full text-white border-2 border-white hover:border-black text-base font-bold rounded-lg duration-300 transition-all"
           >
             Google
           </Button>
@@ -180,6 +184,6 @@ export default function Signup() {
           ]}
         />
       </div> */}
-    </div>
+    </main>
   )
 }

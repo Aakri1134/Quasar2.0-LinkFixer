@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 export interface StepItem {
   title: string
@@ -12,48 +12,74 @@ interface StepsSectionProps {
   items: StepItem[]
 }
 
-const W = 1400
-const H = 500
+// Desktop canvas: wide, progression runs left→right (x = main axis).
+// Mobile canvas: tall, progression runs top→bottom (y = main axis).
+// Mobile is literally the desktop canvas transposed (W/H swapped), so the
+// same generation math produces the same "feel" in the other orientation.
+const DESKTOP_DIMS = { W: 1400, H: 500 }
+const MOBILE_DIMS = { W: 500, H: 1400 }
+
+const MOBILE_QUERY = "(max-width: 767px)"
+
+// Sub-pixel rounding in getBoundingClientRect()/innerHeight (especially at
+// non-100% browser zoom, e.g. 80%/90%) means `progress` can top out at
+// something like 0.997 instead of a clean 1 even when fully scrolled. Since
+// the last node's "visited" check needs edgesDone to reach exactly its
+// index, that rounding error can permanently hide the final card. This
+// tolerance absorbs it without being visible during the animation.
+const VISITED_EPSILON = 0.02
 
 // ─── Node generation ──────────────────────────────────────────────────────────
-// Divides canvas into N columns. Each node gets:
-//   x = column centre ± jitter (but stays in its column third)
-//   y = alternates top/bottom band ± jitter
+// Divides the canvas into N slots along the "main" axis (the direction of
+// progression: x on desktop, y on mobile). Each node gets:
+//   main  = slot centre ± jitter (but stays in its slot third)
+//   cross = alternates near/far band ± jitter (the zigzag axis: y on
+//           desktop, x on mobile)
 // Guarantees:
-//   - every node is strictly right of the previous (x always increases)
-//   - no two nodes share a row band (strict zigzag)
+//   - every node is strictly further along the main axis than the previous
+//   - no two nodes share a cross band (strict zigzag)
 //   - safe padding so cards never clip the canvas edge
-function generateNodes(n: number): [number, number][] {
-  const PAD_X = 120          // left/right padding
-  const PAD_Y = 80           // top/bottom padding
-  const usableW = W - PAD_X * 2
-  const usableH = H - PAD_Y * 2
-  const colW = usableW / n   // width of each column slot
+//
+// Jitter uses real Math.random(), so positions differ on every page
+// load/refresh. The result is cached in the component below, so it stays
+// fixed across re-renders within a single mount (scrolling, unrelated state
+// updates, etc. won't reshuffle nodes mid-session) — it only re-rolls on an
+// actual remount, or when switching between desktop/mobile layouts.
+function generateNodes(
+  n: number,
+  dims: { W: number; H: number },
+  vertical: boolean
+): [number, number][] {
+  const PAD_MAIN = vertical ? 80 : 120 // padding along the progression axis
+  const PAD_CROSS = vertical ? 120 : 80 // padding along the zigzag axis
+  const mainSize = vertical ? dims.H : dims.W
+  const crossSize = vertical ? dims.W : dims.H
+  const usableMain = mainSize - PAD_MAIN * 2
+  const usableCross = crossSize - PAD_CROSS * 2
+  const stepMain = usableMain / n
 
-  // Seeded "random" jitter — deterministic so it never re-randomises on re-render
-  const jitter = (seed: number, range: number) => {
-    const x = Math.sin(seed * 9301 + 49297) * 0.5 + 0.5
-    return (x - 0.5) * range
-  }
+  const jitter = (range: number) => (Math.random() - 0.5) * range
 
   return Array.from({ length: n }, (_, i) => {
-    // x: centre of column i, with small jitter (max ±25% of colW)
-    const colCentre = PAD_X + colW * i + colW / 2
-    const x = colCentre + jitter(i * 3 + 1, colW * 0.4)
+    // main: centre of slot i, with small random jitter (max ±20% of stepMain)
+    const slotCentre = PAD_MAIN + stepMain * i + stepMain / 2
+    const main = slotCentre + jitter(stepMain * 0.4)
 
-    // y: strictly alternates top/bottom band
-    const topBand    = PAD_Y + usableH * 0.15   // ~20% from top
-    const bottomBand = PAD_Y + usableH * 0.70   // ~85% from top
-    const base = i % 2 === 0 ? bottomBand : topBand
-    const y = base + jitter(i * 3 + 2, usableH * 0.12)
+    // cross: strictly alternates far/near band
+    const farBand = PAD_CROSS + usableCross * 0.7 // ~85% along the cross axis
+    const nearBand = PAD_CROSS + usableCross * 0.15 // ~20% along the cross axis
+    const base = i % 2 === 0 ? farBand : nearBand
+    const cross = base + jitter(usableCross * 0.12)
 
+    const [x, y] = vertical ? [cross, main] : [main, cross]
     return [Math.round(x), Math.round(y)] as [number, number]
   })
 }
 
 // ─── Decorative web threads ───────────────────────────────────────────────────
 // Connects non-adjacent nodes to give the web density.
-// Skip-1 and skip-2 connections, capped so dense webs don't look noisy.
+// Skip-2 and skip-3 connections (skip-1 is already the main path), capped
+// so dense webs don't look noisy. Orientation-agnostic (just indices).
 function generateWebThreads(n: number): [number, number][] {
   const threads: [number, number][] = []
   for (let skip = 2; skip <= Math.min(3, n - 1); skip++) {
@@ -80,6 +106,23 @@ function spiderPos(
   return [ax + (bx - ax) * t, ay + (by - ay) * t]
 }
 
+// ─── Responsive breakpoint ────────────────────────────────────────────────────
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia(MOBILE_QUERY).matches : false
+  )
+
+  useEffect(() => {
+    const mql = window.matchMedia(MOBILE_QUERY)
+    setIsMobile(mql.matches)
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
+    mql.addEventListener("change", handler)
+    return () => mql.removeEventListener("change", handler)
+  }, [])
+
+  return isMobile
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function StepsSection({
@@ -89,13 +132,23 @@ export function StepsSection({
 }: StepsSectionProps) {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const [progress, setProgress] = useState(0)
+  const isMobile = useIsMobile()
 
-  // Memoised so positions never re-randomise on scroll re-renders
-  const nodes = useRef(generateNodes(items.length)).current
-  const path  = useRef(
-    Array.from({ length: items.length - 1 }, (_, i) => [i, i + 1] as [number, number])
-  ).current
-  const decorThreads = useRef(generateWebThreads(items.length)).current
+  const canvasDims = isMobile ? MOBILE_DIMS : DESKTOP_DIMS
+
+  // Memoised so positions never re-randomise on scroll re-renders (progress
+  // isn't a dependency) — but they DO re-roll on remount, and re-transpose
+  // whenever the layout crosses the mobile/desktop breakpoint.
+  const nodes = useMemo(
+    () => generateNodes(items.length, canvasDims, isMobile),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [items.length, isMobile]
+  )
+  const path = useMemo(
+    () => Array.from({ length: items.length - 1 }, (_, i) => [i, i + 1] as [number, number]),
+    [items.length]
+  )
+  const decorThreads = useMemo(() => generateWebThreads(items.length), [items.length])
 
   useEffect(() => {
     const onScroll = () => {
@@ -115,13 +168,15 @@ export function StepsSection({
   const edgesDone = progress * path.length
 
   // ViewBox with padding so nodes near edges don't clip
-  const VB_PAD = 30
-  const viewBox = `${-VB_PAD} ${-VB_PAD} ${W + VB_PAD * 2} ${H + VB_PAD * 2}`
+  const VB_PAD = 0
+  const viewBox = `${-VB_PAD} ${-VB_PAD} ${canvasDims.W + VB_PAD * 2} ${
+    canvasDims.H + VB_PAD * 2
+  }`
 
   return (
     <div
       ref={wrapperRef}
-      style={{ height: `${100 + items.length * 80}vh` }}
+      style={{ height: `${100 + items.length * (isMobile ? 100 : 80)}vh` }}
       className="relative"
     >
       <div
@@ -181,10 +236,7 @@ export function StepsSection({
             {path.map(([a, b], i) => {
               const [ax, ay] = nodes[a]
               const [bx, by] = nodes[b]
-              const t = Math.min(1, Math.max(0,
-                edgesDone >= i + 1 ? 1 :
-                edgesDone >= i     ? edgesDone - i : 0
-              ))
+              const t = Math.min(1, Math.max(0, edgesDone - i + VISITED_EPSILON))
               const ex = ax + (bx - ax) * t
               const ey = ay + (by - ay) * t
               return (
@@ -206,7 +258,7 @@ export function StepsSection({
 
             {/* Nodes */}
             {nodes.map(([nx, ny], i) => {
-              const visited = i === 0 || edgesDone >= i
+              const visited = i === 0 || edgesDone + VISITED_EPSILON >= i
               return (
                 <g key={`n${i}`}>
                   {visited && (
@@ -254,8 +306,10 @@ export function StepsSection({
             nodes={nodes}
             items={items}
             edgesDone={edgesDone}
-            canvasH={H}
+            canvasW={canvasDims.W}
+            canvasH={canvasDims.H}
             viewBoxPad={VB_PAD}
+            vertical={isMobile}
           />
         </div>
       </div>
@@ -269,14 +323,18 @@ function WebCards({
   nodes,
   items,
   edgesDone,
+  canvasW,
   canvasH,
   viewBoxPad,
+  vertical,
 }: {
   nodes: [number, number][]
   items: StepItem[]
   edgesDone: number
+  canvasW: number
   canvasH: number
   viewBoxPad: number
+  vertical: boolean
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [rect, setRect] = useState<DOMRect | null>(null)
@@ -290,49 +348,108 @@ function WebCards({
     return () => window.removeEventListener("resize", update)
   }, [])
 
-  const VW = W + viewBoxPad * 2
+  const VW = canvasW + viewBoxPad * 2
   const VH = canvasH + viewBoxPad * 2
+
+  // This is the same factor the <svg> uses internally to map its viewBox
+  // onto its actual rendered box (preserveAspectRatio="meet"). SVG shapes
+  // (nodes, edges, spider) automatically track it because they live inside
+  // the viewBox — the browser rescales them for free whenever the container
+  // resizes (zoom, window resize, breakpoint change, whatever).
+  //
+  // The HTML card overlay doesn't get that for free: it's positioned in
+  // real screen pixels. If we hand it raw "design-space" pixel values
+  // (card width, font size, connector length, padding) without pushing
+  // them through this same factor, the cards stay a fixed CSS-px size
+  // while the web around them grows/shrinks — so at any zoom/viewport size
+  // other than the one the numbers were tuned at, the cards drift out of
+  // proportion with the web instead of scaling together with it.
+  const scale = rect ? Math.min(rect.width / VW, rect.height / VH) : 1
+  const toScreenSize = (designPx: number) => designPx * scale
 
   const toScreen = (vx: number, vy: number): [number, number] => {
     if (!rect) return [0, 0]
-    const scale = Math.min(rect.width / VW, rect.height / VH)
     const ox = (rect.width  - VW * scale) / 2
     const oy = (rect.height - VH * scale) / 2
     return [ox + (vx + viewBoxPad) * scale, oy + (vy + viewBoxPad) * scale]
   }
 
-  // Dynamic card width: fewer nodes → wider cards, more nodes → narrower
-  const cardW = Math.max(140, Math.min(200, Math.floor(1000 / nodes.length)))
+  const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min), max)
+
+  // Dynamic card width, defined in the SAME design-space units as the SVG
+  // canvas (1400x500 / 500x1400): fewer nodes → wider cards, more nodes →
+  // narrower. Mobile gets a tighter cap since cards sit side-by-side with a
+  // narrower canvas rather than stacked in a wide one. This is the design
+  // value — it gets run through toScreenSize() before it ever touches a
+  // CSS property, exactly like node coordinates do via toScreen().
+  const cardWDesign = vertical
+    ? Math.max(120, Math.min(170, Math.floor(900 / nodes.length)))
+    : Math.max(140, Math.min(200, Math.floor(1000 / nodes.length)))
+  const cardW = toScreenSize(cardWDesign)
+
+  // Design-space gap between a node and its card (was a bare "18" before),
+  // scaled the same way so the silk connector and card offset shrink/grow
+  // with everything else instead of staying a fixed 18 CSS px forever.
+  const gap = toScreenSize(18)
 
   return (
     <div ref={containerRef} className="absolute inset-0 pointer-events-none" style={{ zIndex: 2 }}>
       {nodes.map(([nx, ny], i) => {
-        const visited = i === 0 || edgesDone >= i
+        const visited = i === 0 || edgesDone + VISITED_EPSILON >= i
         const [px, py] = toScreen(nx, ny)
-        const isTop = ny < canvasH / 2   // card goes below if node is in top band
+
+        // Desktop: node in the top band → card above it, bottom band → below.
+        // Mobile: node in the left band → card to its left, right band → to its right.
+        const before = vertical ? nx < canvasW / 2 : ny < canvasH / 2
+
+        let left: number
+        let top: number
+        let transform: string
+
+        if (vertical) {
+          const rawLeft = before ? px - gap - cardW : px + gap
+          left = rect ? clamp(rawLeft, 8, rect.width - cardW - 8) : rawLeft
+          top = py
+          transform = "translate(0, -50%)"
+        } else {
+          left = px
+          top = before ? py - gap : py + gap
+          transform = before ? "translate(-50%, -100%)" : "translate(-50%, 0)"
+        }
 
         return (
           <div
             key={i}
             className="absolute pointer-events-auto"
             style={{
-              left: px,
-              top: isTop ? py + 18 : py - 18,
-              transform: isTop ? "translate(-50%, 0)" : "translate(-50%, -100%)",
+              left,
+              top,
+              transform,
               width: cardW,
               opacity: visited ? 1 : 0,
               transition: "opacity 0.45s ease",
             }}
           >
             {/* Silk connector between card edge and node */}
-            <div
-              className="absolute left-1/2 -translate-x-px w-px bg-green-300"
-              style={{
-                [isTop ? "top" : "bottom"]: 0,
-                height: 18,
-                transform: "translateX(-50%)",
-              }}
-            />
+            {vertical ? (
+              <div
+                className="absolute top-1/2 h-px bg-green-300"
+                style={{
+                  [before ? "right" : "left"]: 0,
+                  width: gap,
+                  transform: "translateY(-50%)",
+                } as React.CSSProperties}
+              />
+            ) : (
+              <div
+                className="absolute left-1/2 w-px bg-green-300"
+                style={{
+                  [before ? "bottom" : "top"]: 0,
+                  height: gap,
+                  transform: "translateX(-50%)",
+                } as React.CSSProperties}
+              />
+            )}
 
             <div
               style={{
@@ -340,29 +457,34 @@ function WebCards({
                 backdropFilter: "blur(10px)",
                 border: "1px solid #dcfce7",
                 boxShadow: "0 2px 16px rgba(22,163,74,0.09)",
-                borderRadius: 14,
-                padding: "10px 14px",
-                marginTop: isTop ? 18 : 0,
-                marginBottom: isTop ? 0 : 18,
+                borderRadius: toScreenSize(14),
+                padding: `${toScreenSize(10)}px ${toScreenSize(14)}px`,
+                marginTop: vertical ? 0 : before ? 0 : gap,
+                marginBottom: vertical ? 0 : before ? gap : 0,
+                marginLeft: vertical ? (before ? 0 : gap) : 0,
+                marginRight: vertical ? (before ? gap : 0) : 0,
               }}
             >
               <div className="flex items-center gap-1.5 mb-1">
-                <span className="text-[9px] font-black text-green-500 font-mono tracking-widest">
+                <span
+                  className="font-black text-green-500 font-mono tracking-widest"
+                  style={{ fontSize: toScreenSize(9) }}
+                >
                   {String(i + 1).padStart(2, "0")}
                 </span>
                 {items[i]?.icon && (
-                  <span className="text-green-600" style={{ fontSize: 11 }}>{items[i].icon}</span>
+                  <span className="text-green-600" style={{ fontSize: toScreenSize(11) }}>{items[i].icon}</span>
                 )}
               </div>
               <h3
                 className="font-semibold text-gray-900 leading-snug mb-1"
-                style={{ fontSize: Math.max(10, Math.min(13, cardW / 14)) }}
+                style={{ fontSize: toScreenSize(clamp(cardWDesign / 14, 10, 13)) }}
               >
                 {items[i]?.title}
               </h3>
               <p
                 className="text-gray-500 leading-relaxed"
-                style={{ fontSize: Math.max(9, Math.min(11, cardW / 17)) }}
+                style={{ fontSize: toScreenSize(clamp(cardWDesign / 17, 9, 11)) }}
               >
                 {items[i]?.description}
               </p>
