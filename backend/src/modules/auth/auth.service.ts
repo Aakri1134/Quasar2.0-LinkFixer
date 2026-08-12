@@ -1,43 +1,9 @@
 import jwt from "jsonwebtoken"
 import { env } from "../../config/env.js"
 import { sendVerificationEmail } from "../../utils/mail/mail.js"
+import { AppError } from "../../utils/AppError.js"
 import type { AuthRepository } from "./auth.repository.js"
-
-type AuthUserPayload = {
-    id: string
-    username: string
-    email: string
-    emailVerified: boolean
-}
-
-type RegisterInput = {
-    username: string
-    email: string
-    password: string
-}
-
-type LoginInput = {
-    email: string
-    password: string
-}
-
-type ResendVerificationInput = {
-    email: string
-}
-
-type VerifyEmailInput = {
-    token: string
-}
-
-export class AuthError extends Error {
-    constructor(
-        message: string,
-        public readonly statusCode: number,
-    ) {
-        super(message)
-        this.name = "AuthError"
-    }
-}
+import type { AuthUserPayload, LoginInput, RegisterInput, ResendVerificationInput, VerifyEmailInput } from "./auth.types.js"
 
 export class AuthService {
     constructor(private readonly repo: AuthRepository) {}
@@ -50,7 +16,7 @@ export class AuthService {
 
         const existingUser = await this.repo.findUserByEmail(email)
         if (existingUser) {
-            throw new AuthError("User already exists", 400)
+            throw new AppError("User already exists", 400)
         }
 
         const user = this.repo.createUser({ username, email, password }) as any
@@ -75,20 +41,12 @@ export class AuthService {
         const user = (await this.repo.findUserByIdWithoutPassword(userId)) as any
 
         if (!user) {
-            throw new AuthError("User not found", 404)
+            throw new AppError("User not found", 404)
         }
 
         return {
             authenticated: true,
             user: this.formatUser(user),
-        }
-    }
-
-    // Clears the auth cookie response payload.
-    logout() {
-        return {
-            success: true,
-            msg: "Logged out successfully",
         }
     }
 
@@ -99,16 +57,16 @@ export class AuthService {
 
         const user = (await this.repo.findUserByEmail(email)) as any
         if (!user) {
-            throw new AuthError("Invalid credentials", 400)
+            throw new AppError("Invalid credentials", 400)
         }
 
         const isMatch = await user.comparePassword(password)
         if (!isMatch) {
-            throw new AuthError("Wrong Email or Password", 400)
+            throw new AppError("Wrong Email or Password", 400)
         }
 
         if (!user.emailVerified) {
-            throw new AuthError("Login unsuccessful. Please verify your email.", 401)
+            throw new AppError("Login unsuccessful. Please verify your email.", 401)
         }
 
         const token = user.generateAuthToken()
@@ -116,25 +74,24 @@ export class AuthService {
         return {
             token,
             success: true,
-            user: this.formatUser(user),
-            msg: "Login successful.",
+            user: this.formatUser(user)
         }
     }
 
     // Verifies the email token and marks the user as verified.
     async verifyEmail(input: VerifyEmailInput) {
         if (!input.token) {
-            throw new AuthError("Invalid Link", 400)
+            throw new AppError("Invalid Link", 400)
         }
 
         const decoded = jwt.verify(input.token, env.EMAIL_SECRET) as { id?: string }
         if (!decoded.id) {
-            throw new AuthError("Invalid Link", 400)
+            throw new AppError("Invalid Link", 400)
         }
 
-        const user = (await this.repo.findUserById(decoded.id)) as any
+        const user = await this.repo.findUserById(decoded.id)
         if (!user) {
-            throw new AuthError("User not found", 404)
+            throw new AppError("User not found", 404)
         }
 
         if (
@@ -142,7 +99,7 @@ export class AuthService {
             !user.verificationTokenExpires ||
             new Date(user.verificationTokenExpires).getTime() < Date.now()
         ) {
-            throw new AuthError("Verification token is invalid or has expired", 400)
+            throw new AppError("Verification token is invalid or has expired", 400)
         }
 
         user.emailVerified = true
@@ -152,6 +109,7 @@ export class AuthService {
 
         return {
             authToken: user.generateAuthToken(),
+            user : this.formatUser(user)
         }
     }
 
@@ -161,11 +119,11 @@ export class AuthService {
         const user = (await this.repo.findUserByEmail(email)) as any
 
         if (!user) {
-            throw new AuthError("User not found", 404)
+            throw new AppError("User not found", 404)
         }
 
         if (user.emailVerified) {
-            throw new AuthError("Email already verified", 400)
+            throw new AppError("Email already verified", 400)
         }
 
         const verificationToken = user.generateVerificationToken()
@@ -182,7 +140,7 @@ export class AuthService {
         const user = (await this.repo.findUserByIdWithoutPassword(userId)) as any
 
         if (!user) {
-            throw new AuthError("User not found", 404)
+            throw new AppError("User not found", 404)
         }
 
         return user

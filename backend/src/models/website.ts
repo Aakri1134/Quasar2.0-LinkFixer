@@ -1,59 +1,105 @@
-import mongoose, { Schema } from "mongoose";
+import mongoose from "mongoose"
+import { required } from "zod/mini"
 
-const WebsiteSchema = new mongoose.Schema({
-  userID: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: `User`
-  }],
-  ownerID: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: `User`
+const WebsiteSchema = new mongoose.Schema(
+  {
+    ownerId : {
+      type : mongoose.Schema.Types.ObjectId,
+      ref : "User"
+    },
+    userID: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: `User`,
+      },
+    ],
+    robots_txt_url : {
+      type : String
+    },
+    domain: {
+      type: String,
+      required: true,
+      unique: true
+    },
+    sitemap_links: {
+      type: Array,
+      default: [],
+    },
+    mail_subscription: {
+      type: Boolean,
+      default: false,
+    },
+    agree_to_terms: {
+      type: [
+        new mongoose.Schema(
+          {
+            agreement: Boolean,
+            userId: {
+              type: mongoose.Schema.Types.ObjectId,
+              ref: "User",
+            },
+            updatedAt: {
+              type: Date,
+              default: Date.now,
+            },
+            createdAt: {
+              type: Date,
+              default: Date.now,
+            },
+          },
+          { timestamps: true, _id: false },
+        ),
+      ],
+      default: [],
+    },
+    checks: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Check",
+      },
+    ],
+    options: {
+      authentication: {
+        type: new mongoose.Schema(
+          {
+            cookies: {
+              type: [
+                new mongoose.Schema({
+                  key: String,
+                  value: String,
+                }),
+              ],
+              default: [],
+            },
+            headers: {
+              type: [
+                new mongoose.Schema({
+                  key: String,
+                  value: String,
+                }),
+              ],
+              default: [],
+            },
+          },
+          { _id: false },
+        ),
+      },
+    },
+    estimatedTime: {
+      priority_low: { type: Number, default: -1 },
+      priority_mid: { type: Number, default: -1 },
+      priority_high: { type: Number, default: -1 },
+    },
+    updatedAt: {
+      type: Date,
+      default: Date.now,
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
   },
-  verifiedUsers: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: `User`
-  }],
-  domain: {
-    type: String,
-    required: true,
-  },
-  sitemapLinks: {
-    type: Array,
-    default: []
-  },
-  checks: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Check",
-    default: []
-  }],
-  options: {
-    authentication: {
-      type: new mongoose.Schema({
-        cookies: {
-          type: Map,
-          of: String,
-          default: {}
-        },
-        token: {
-          type: [String],
-          default: []
-        }
-      }, { _id: false })
-    }
-  },
-  estimatedTime: {
-    priority_low: { type: Number, default: -1 },
-    priority_mid: { type: Number, default: -1 },
-    priority_high: { type: Number, default: -1 }
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now,
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  }
-}, { timestamps: true });
+  { timestamps: true, versionKey: false },
+)
 
-export const Website = mongoose.model("Website", WebsiteSchema);
+export const Website = mongoose.model("Website", WebsiteSchema)

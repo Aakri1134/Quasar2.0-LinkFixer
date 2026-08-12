@@ -67,7 +67,7 @@ export class Manager {
 
     const websiteID = currWebsite.id
     const domain = currWebsite.domain
-    const sitemapLinks = currWebsite.sitemapLinks
+    const sitemap_links = currWebsite.sitemap_links
 
     console.log("website ::::::: ", domain)
 
@@ -94,7 +94,7 @@ export class Manager {
     this.linkChannel.assertQueue(linkQueue, { durable: true })
     await this.linkChannel.purgeQueue(linkQueue)
 
-    for (const link of sitemapLinks) {
+    for (const link of sitemap_links) {
       this.linkChannel.sendToQueue(
         linkQueue,
         Buffer.from(JSON.stringify({ link, baseDomain: domain, depth: 0 })),

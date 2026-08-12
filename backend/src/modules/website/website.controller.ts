@@ -1,6 +1,7 @@
 import type { Request, Response } from "express"
-import { WebsiteError, type WebsiteService } from "./website.service.js"
+import { type WebsiteService } from "./website.service.js"
 import { asyncHandler } from "../../utils/asyncHandler.js"
+import type { AddWebsitePayload } from "./website.types.js"
 
 type AuthenticatedRequest = Request & {
   user?: {
@@ -15,6 +16,24 @@ export class WebsiteController {
   getProtected(req: AuthenticatedRequest, res: Response) {
     return res.json(this.service.getProtected(req.user ?? {}))
   }
+
+  getWebsiteForUser = asyncHandler(async (req : AuthenticatedRequest, res : Response) => {
+    const userId = req.user?.id
+
+		if (!userId) {
+			return res.status(401).json({ error: "Unauthorized" })
+		}
+
+		const payload = await this.service.getWebsitesForUser(userId)
+
+		if (!payload) {
+			return res.status(500).json({
+				error: "Internal Server Error",
+			})
+		}
+
+		return res.status(200).json(payload)
+  })
 
   // Verifies a website ownership token.
   verifyWebsite = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
@@ -32,13 +51,11 @@ export class WebsiteController {
   // Adds a website to the authenticated user.
   addWebsite = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const userId = req.user?.id
-    const { link } = req.body as { link: string }
-
     if (!userId) {
       return res.status(403).json({ error: "Unauthorized" })
     }
 
-    const result = await this.service.addWebsite(userId, link)
+    const result = await this.service.addWebsite({userId, ...req.body})
     return res.status(result.statusCode).json(result.body)
   })
 
@@ -46,10 +63,7 @@ export class WebsiteController {
   removeWebsite = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const userId = req.user?.id
     const { websiteID } = req.body as { websiteID: string }
-
-    if (!userId) {
-      return res.status(403).json({ error: "Unauthorized" })
-    }
+    if (!userId) return res.status(403).json({ error: "Unauthorized" })
 
     const result = await this.service.removeWebsite(userId, websiteID)
     return res.status(200).json(result)

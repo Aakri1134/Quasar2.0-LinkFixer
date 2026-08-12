@@ -1,10 +1,36 @@
-import mongoose, { Schema } from "mongoose";
+import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { v4 as uuidv4 } from 'uuid';
 import { env } from "../config/env.js";
 
-const UserSchema = new mongoose.Schema({
+// Plain field shape
+export interface IUser {
+  username: string;
+  email: string;
+  password: string;
+  emailVerified: boolean;
+  verificationToken?: string | null;
+  verificationTokenExpires?: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  websites: mongoose.Types.ObjectId[];
+}
+
+// Instance methods
+export interface IUserMethods {
+  generateAuthToken(): string;
+  comparePassword(password: string): Promise<boolean>;
+  generateVerificationToken(): string;
+}
+
+// Combine into the full document type
+export type UserDocument = IUser & IUserMethods & Document;
+
+// Model type (needed if you add any statics later; harmless otherwise)
+type UserModel = mongoose.Model<IUser, {}, IUserMethods>;
+
+const UserSchema = new mongoose.Schema<IUser, UserModel, IUserMethods>({
   username: {
     type: String,
     required: true,
@@ -75,7 +101,7 @@ UserSchema.methods.generateVerificationToken = function () {
   );
 
   this.verificationToken = verificationToken;
-  this.verificationTokenExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+  this.verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
   return verificationToken;
 };

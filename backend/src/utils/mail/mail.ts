@@ -1,32 +1,33 @@
-// Sends the verification email through Brevo.
-export const sendVerificationEmail = async (email: string, verificationToken: string) => {
-  const apiKey = process.env.BREVO_KEY
-  if (!apiKey) {
-    throw new Error("Brevo API key is not defined in environment variables")
-  }
+import nodemailer from "nodemailer"
+import { env } from "../../config/env.js"
+import { verificationMailHTMLTemplate } from "./composeMail/emailVerificationMail.js"
+import { reportHTMLTemplate } from "./composeMail/reportMail.js"
 
-  const verificationUrl = `${process.env.BACKEND_URL}/api/auth/verify-email?token=${verificationToken}`
+// Reuse a single transporter across calls instead of creating one per email.
+const transporter = nodemailer.createTransport({
+  host: env.SMTP_HOST,
+  port: Number(env.SMTP_PORT ?? 587),
+  secure: env.SMTP_PORT === "465",
+  auth: {
+    user: env.SMTP_USER,
+    pass: env.SMTP_PASS,
+  },
+})
 
-  const htmlTemplate = `<html>
-      <h1>Email Verification</h1>
-      <p>Please click the link below to verify your email address:</p>
-      <a href="${verificationUrl}">Verify Email</a>
-      <p>This link will expire in 24 hours.</p>
-    </html>`
+const SENDER = { name: "LinkFixer", address: env.SMTP_USER }
+
+export const sendVerificationEmail = async (
+  email: string,
+  verificationToken: string,
+) => {
+  const verificationUrl = `${env.FRONTEND_URL}/verify-email/${verificationToken}`
 
   try {
-    await fetch("https://api.brevo.com/v3/smtp/email", {
-      method: "POST",
-      headers: {
-        "api-key": apiKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        sender: { name: "LinkFixer", email: "streamthread2206@gmail.com" },
-        to: [{ email }],
-        subject: "LinkFixer Signup Email verification",
-        htmlContent: htmlTemplate,
-      }),
+    await transporter.sendMail({
+      from: SENDER,
+      to: email,
+      subject: "LinkFixer Signup Email verification",
+      html: verificationMailHTMLTemplate(verificationUrl),
     })
     console.log(`Verification email sent to ${email}`)
   } catch (error) {
@@ -35,32 +36,15 @@ export const sendVerificationEmail = async (email: string, verificationToken: st
   }
 }
 
-// Sends a report email payload.
-export const sendReport = async (data: unknown) => {
-  const apiKey = process.env.BREVO_KEY
-  if (!apiKey) {
-    throw new Error("Brevo API key is not defined in environment variables")
-  }
-
+export const sendReport = async (data: string[]) => {
   const reportEmail = process.env.REPORT_EMAIL ?? "streamthread2206@gmail.com"
-  const htmlTemplate = `<html>
-      <h1>LinkFixer Report</h1>
-      <pre>${JSON.stringify(data, null, 2)}</pre>
-    </html>`
 
   try {
-    await fetch("https://api.brevo.com/v3/smtp/email", {
-      method: "POST",
-      headers: {
-        "api-key": apiKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        sender: { name: "LinkFixer", email: "streamthread2206@gmail.com" },
-        to: [{ email: reportEmail }],
-        subject: "LinkFixer Report",
-        htmlContent: htmlTemplate,
-      }),
+    await transporter.sendMail({
+      from: SENDER,
+      to: reportEmail,
+      subject: "LinkFixer Report",
+      html: reportHTMLTemplate(data),
     })
     console.log(`Report email sent to ${reportEmail}`)
   } catch (error) {

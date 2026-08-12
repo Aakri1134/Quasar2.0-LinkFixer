@@ -2,6 +2,12 @@ import { User } from "../../models/user.js"
 import { Website } from "../../models/website.js"
 
 export class WebsiteRepository {
+  
+  // Loads the authenticated user's websites from the database.
+  async findWebsitesByUserId(userId: string) {
+		return User.findById(userId).populate("websites")
+	}
+
   // Loads a user document by id.
   findUserById(userId: string) {
     return User.findById(userId)

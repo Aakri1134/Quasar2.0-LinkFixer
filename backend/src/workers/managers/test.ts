@@ -1,9 +1,9 @@
 import { env } from "../../config/env.js"
 import { websiteRepository } from "../../modules/website/website.container.js"
 import { connectRedis } from "../../database/connectRedis.js"
-import { WebsiteError } from "../../modules/website/website.service.js"
 import amqp from "amqplib"
 import { connectDB } from "../../database/connectdb.js"
+import { AppError } from "../../utils/AppError.js"
 
 async function testManager(domain: string) {
   await connectDB()
@@ -18,7 +18,7 @@ async function testManager(domain: string) {
   if (!website) {
     website = websiteRepository.createWebsite({
       domain,
-      sitemapLinks: [domain],
+      sitemap_links: [domain],
       checkedLinks: [],
       checkedAt: Date.now(),
     })
@@ -26,7 +26,7 @@ async function testManager(domain: string) {
   }
 
   if (!env.REDIS_URL) {
-    throw new WebsiteError("Redis URL is not configured", 500)
+    throw new AppError("Redis URL is not configured", 500)
   }
   const redis = await connectRedis()
   await redis.set(`queued:${domain}`, 1)
