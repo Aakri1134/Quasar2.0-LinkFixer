@@ -48,6 +48,7 @@ const SiteList = () => {
             <div className="w-full flex flex-col px-1">
               {dashboardContext?.websites?.map((web) => (
                 <SiteCard
+                  websiteID={web.id}
                   link={web.domain}
                   added={new Date(web.updatedAt)}
                   sendTo="123"

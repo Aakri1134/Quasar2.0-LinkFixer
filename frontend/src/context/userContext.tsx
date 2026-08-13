@@ -1,5 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react"
-import { validator } from "../utils/validator"
+import { createContext, useContext, useEffect } from "react"
 import {
   useVerifyAuth,
   verifyAuthQueryKey,
@@ -12,12 +11,6 @@ type userContextType = {
   username?: string
   emailVerified?: boolean
   loading: boolean
-  updateUser: (prop: {
-    email: string
-    id: string
-    username: string
-    emailVerified: boolean
-  }) => boolean
   checkLogin: () => Promise<void>
 }
 
@@ -28,23 +21,8 @@ export const UserContextProvider = ({
 }: {
   children: React.ReactNode
 }) => {
-  const [email, setEmail] = useState<string | undefined>()
-  const [id, setId] = useState<string | undefined>()
-  const [username, setUsername] = useState<string | undefined>()
-  const [emailVerified, setEmailVerified] = useState<boolean | undefined>()
-  const { data : verificationData, isLoading : loading } = useVerifyAuth()
+  const { data, isLoading : loading } = useVerifyAuth()
   const queryClient = useQueryClient()
-
-  const updateUser: userContextType["updateUser"] = ({ email, id, username, emailVerified }) => {
-    if (validator(email, "email")) {
-      setEmail(email)
-      setId(id)
-      setUsername(username)
-      setEmailVerified(emailVerified)
-      return true
-    }
-    return false
-  }
 
   async function checkLogin() {
     await queryClient.invalidateQueries({
@@ -52,24 +30,15 @@ export const UserContextProvider = ({
     })
   }
 
-  function clearContext(){
-    setEmail(undefined)
-    setId(undefined)
-    setUsername(undefined)
-    setEmailVerified(undefined)
-  }
-
   useEffect(() => {
-    console.log(verificationData?.authenticated)
-    if (!verificationData?.authenticated) {
-      clearContext()
+    if (!data?.authenticated) {
+      checkLogin()
     } else {
-      console.log(verificationData.user)
-      updateUser(verificationData.user)
+      checkLogin()
     }
-  }, [verificationData])
+  }, [data])
 
-  const value: userContextType = { email, id, emailVerified, username, updateUser, checkLogin, loading }
+  const value: userContextType = { ...data?.user, checkLogin, loading }
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>
 }
 

@@ -18,66 +18,48 @@ export class WebsiteController {
   }
 
   getWebsiteForUser = asyncHandler(async (req : AuthenticatedRequest, res : Response) => {
-    const userId = req.user?.id
-
-		if (!userId) {
-			return res.status(401).json({ error: "Unauthorized" })
-		}
-
+    const userId = req.user.id
 		const payload = await this.service.getWebsitesForUser(userId)
-
-		if (!payload) {
-			return res.status(500).json({
-				error: "Internal Server Error",
-			})
-		}
-
 		return res.status(200).json(payload)
+  })
+
+  // Generates verification file for user to add to their domain
+  generateVerificationFile = asyncHandler(async (req : AuthenticatedRequest, res : Response) => { 
+    const userId = req.user.id
+    const {websiteID} = req.body
+    return res.status(200).json({
+      msg : "Successfull generated file",
+      data : await this.service.generateVerificationFileContent(websiteID, userId)
+    })
   })
 
   // Verifies a website ownership token.
   verifyWebsite = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-    const userId = req.user?.id
-    const { link, replace } = req.body as { link: string; replace?: boolean }
-
-    if (!userId) {
-      return res.status(403).json({ error: "Unauthorized" })
-    }
-
-    const result = await this.service.verifyWebsite(userId, link, replace)
+    const userId = req.user.id
+    const { link } = req.body as { link: string }
+    const result = await this.service.verifyWebsite(userId, link)
     return res.status(200).json(result)
   })
 
   // Adds a website to the authenticated user.
   addWebsite = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-    const userId = req.user?.id
-    if (!userId) {
-      return res.status(403).json({ error: "Unauthorized" })
-    }
-
+    const userId = req.user.id
     const result = await this.service.addWebsite({userId, ...req.body})
     return res.status(result.statusCode).json(result.body)
   })
 
   // Removes a website from the authenticated user.
   removeWebsite = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-    const userId = req.user?.id
-    const { websiteID } = req.body as { websiteID: string }
-    if (!userId) return res.status(403).json({ error: "Unauthorized" })
-
+    const userId = req.user.id
+    const { websiteID } = req.body
     const result = await this.service.removeWebsite(userId, websiteID)
     return res.status(200).json(result)
   })
 
   // Queues a scan request for a website.
   scanWebsite = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-    const userId = req.user?.id
+    const userId = req.user.id
     const { websiteID, force } = req.body as { websiteID: string; force?: boolean }
-
-    if (!userId) {
-      return res.status(403).json({ error: "Unauthorized" })
-    }
-
     const result = await this.service.scanWebsite(userId, websiteID, force)
     if ("statusCode" in result) {
       return res.status(result.statusCode).json(result.body)

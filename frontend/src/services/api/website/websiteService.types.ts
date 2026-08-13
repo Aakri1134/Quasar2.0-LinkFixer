@@ -1,5 +1,4 @@
-import type { AddWebsiteFormValues, addWebsiteSchema } from "@/utils/schemas/website";
-import type z from "zod";
+import type { AddWebsiteFormValues } from "@/utils/schemas/website";
 
 export type getWebsiteForUserOutput =  {
     website: {
@@ -13,5 +12,13 @@ export type getWebsiteForUserOutput =  {
 
 export type addWebsitePayload = Omit<
   AddWebsiteFormValues,
-  "enableAuthentication" | "agreeToTerms"
+  "enableAuthentication"
 >
+
+export type deleteWebsitePayload = {
+    websiteID : string
+}
+
+export type generateVerificationFilePayload = {
+    websiteID : string
+}

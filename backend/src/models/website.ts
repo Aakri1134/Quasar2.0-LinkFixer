@@ -3,16 +3,18 @@ import { required } from "zod/mini"
 
 const WebsiteSchema = new mongoose.Schema(
   {
-    ownerId : {
+    ownerID : {
       type : mongoose.Schema.Types.ObjectId,
       ref : "User"
     },
-    userID: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: `User`,
-      },
-    ],
+    userID: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: `User`
+    }],
+    mail_subscribers: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }],
     robots_txt_url : {
       type : String
     },

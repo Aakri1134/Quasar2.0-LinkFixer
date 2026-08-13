@@ -4,10 +4,10 @@ import { useMutation } from "@tanstack/react-query";
 import type { AxiosError } from "axios";
 import { toast } from "sonner";
 
-export default function useAddWebsite(){
+export default function useDeleteWebsite(){
     const dashboardContext = useDashboardContext()
     return useMutation({
-        mutationFn : WebsiteService.addWebsiteForUser,
+        mutationFn : WebsiteService.deleteWebsiteForUser,
         onSuccess : async () => {
             await dashboardContext?.refetchWebsite()
         },

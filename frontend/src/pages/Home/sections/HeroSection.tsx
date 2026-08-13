@@ -31,13 +31,14 @@ export function HomeSection() {
             </span>
           </div>
 
-          <h1 className="text-5xl md:text-7xl font-bold text-center mb-4 text-gray-900">
+          <h1 className="text-5xl md:text-7xl font-bold text-center mb-1 text-gray-900 leading-21">
             Website Health
-          </h1>
-          <h1 className="text-5xl md:text-7xl font-bold text-center mb-6 [text-shadow:-5px_-5px_0px_rgba(0,0,0,0.8)] hover:[text-shadow:0px_0px_0px_rgba(0,0,0,0)] bg-linear-to-r from-green-500 via-yellow-300 to-green-500 bg-clip-text text-transparent duration-100">
+            <br/>
+          
+          <span className="text-5xl md:text-7xl font-bold text-center mb-6 [text-shadow:-5px_-5px_0px_rgba(0,0,0,0.8)] hover:[text-shadow:0px_0px_0px_rgba(0,0,0,0)] bg-linear-to-r from-green-500 via-yellow-300 to-green-500 bg-clip-text text-transparent duration-100">
             Checkup
+          </span>
           </h1>
-
           <p className="text-center text-lg md:text-xl max-w-3xl mb-12 text-gray-600">
             Instantly detect broken links and analyze page reachability. Get
             comprehensive insights into your website's sitemap structure.

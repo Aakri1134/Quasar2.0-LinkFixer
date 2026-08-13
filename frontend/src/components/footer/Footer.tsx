@@ -58,7 +58,7 @@ export function Footer() {
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-14 lg:px-8">
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 sm:gap-10 md:grid-cols-4">
           <div className="sm:col-span-2 md:col-span-1">
-            <a href="#" className="flex items-center gap-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-500">
+            <a href="#" className="flex items-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-500">
               <img src={logo} alt="Makora" className="w-[60%] h-fit md:w-full" />
             </a>
             <p className="mt-3 max-w-[280px] text-sm leading-relaxed text-gray-500 sm:max-w-[220px]">

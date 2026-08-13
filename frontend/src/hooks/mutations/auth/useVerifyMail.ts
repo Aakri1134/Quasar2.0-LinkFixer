@@ -12,7 +12,7 @@ export const useVerifyMail = () => {
     onSuccess: (data) => {
       // trigger alert about verification mail sent
       if (data) {
-        userContext?.updateUser(data.user)
+        userContext?.checkLogin()
         toast(data.msg)
       }
     },

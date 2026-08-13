@@ -1,5 +1,6 @@
 import axios from "axios"
 import jwt from "jsonwebtoken"
+import { Types } from "mongoose"
 import { Redis } from "ioredis"
 import { env } from "../../config/env.js"
 import enqueue from "../../utils/scheduler/enqueue.js"
@@ -40,12 +41,29 @@ export class WebsiteService {
       success: true,
     }
   }
+  // Generate verification content for domain verification file
+  async generateVerificationFileContent(websiteID : string, userID : string) {
+    const website = await this.repo.findWebsiteById(websiteID)
+    if(!website){
+      throw new AppError("Invalid Request")
+    }
+    if(!website?.userID.find(x => x.toString() === userID)){
+      website.userID.push(userID as any)
+    }
+    return {
+      token : `makora_${websiteID}`,
+      issueDate : new Date(),
+      domain : website.domain
+    }
+  }
 
   // Verifies the ownership token for a website.
-  async verifyWebsite(userId: string, link: string, replace = false) {}
+  async verifyWebsite(userId: string, link: string, replace = false) {
+    
+  }
 
   // Adds a website to the authenticated user.
-  async addWebsite({ userId, baseURL, agreeToTerms }: AddWebsitePayload) {
+  async addWebsite({ userId, baseURL, agreeToTerms, mail_subscription }: AddWebsitePayload) {
     let safeLink = baseURL
     const user = await this.repo.findUserByIdWithoutPassword(userId)
     if (!user) {
@@ -59,21 +77,19 @@ export class WebsiteService {
     }
 
     const domain = url.host
-    if (!domain) {
-      throw new AppError("Please provide a valid start URL", 400)
-    }
+    if (!domain) throw new AppError("Please provide a valid start URL", 400)
 
     const website = await this.repo.findWebsiteByDomain(domain)
     if (website !== null) {
       if (user.websites.some((web) => web.toString() === website.id)) {
         throw new AppError("Website already added to user", 400)
       }
+      user.websites.push(website._id)
 
-      user.websites.push({
-        id: website._id,
-        domain: website.domain,
-      } as any)
       website.userID.push(user.id)
+      if (mail_subscription) {
+        website.mail_subscribers.push(user.id)
+      }
 
       try {
         await Promise.all([
@@ -92,62 +108,36 @@ export class WebsiteService {
         },
       }
     }
+    const newWebsite = this.repo.createWebsite({
+      domain,
+      userID: [userId],
+      checkedLinks: [],
+      agree_to_terms: {
+        userId: user.id,
+        agreement: agreeToTerms,
+      }
+    })
+
+    if (mail_subscription) {
+      newWebsite.mail_subscribers.push(user.id)
+    }
+    user.websites.push(newWebsite.id)
 
     try {
-      const newWebsite = this.repo.createWebsite({
-        domain,
-        userID: [userId],
-        checkedLinks: [],
-        // sitemapURLs : sitemapURLs ?? [],
-        // mail_subscription,
-        agree_to_terms : {
-          userId : user.id,
-          agreement : agreeToTerms,
-        },
-        // ...(authentication_mode === "cookie"
-        //   ? {
-        //       options: {
-        //         authentication: {
-        //           cookies: auth_session_tokens ?? [],
-        //         },
-        //       },
-        //     }
-        //   : authentication_mode === "jwt"
-        //     ? {
-        //         options: {
-        //           authentication: {
-        //             headers: auth_session_tokens ?? [],
-        //           },
-        //         },
-        //       }
-        //     : null),
-        // sitemap_links: sitemap_links.length === 0 ? [safeLink] : sitemap_links,
-      })
+      await Promise.all([
+        this.repo.saveUser(user),
+        this.repo.saveWebsite(newWebsite),
+      ])
+    } catch {
+      throw new AppError("Error in saving data", 400)
+    }
 
-      user.websites.push(newWebsite.id)
-
-      try {
-        await Promise.all([
-          this.repo.saveUser(user),
-          this.repo.saveWebsite(newWebsite),
-        ])
-      } catch {
-        throw new AppError("Error in saving data", 400)
-      }
-
-      return {
-        statusCode: 201,
-        body: {
-          // ...reports,
-          msg: "Website added sucessfully",
-          website: newWebsite,
-        },
-      }
-    } catch (error) {
-      if (error instanceof AppError) {
-        throw error
-      }
-      throw new AppError("Server error", 500)
+    return {
+      statusCode: 201,
+      body: {
+        msg: "Website added sucessfully",
+        website: newWebsite,
+      },
     }
   }
 
@@ -166,7 +156,7 @@ export class WebsiteService {
       throw new AppError("User not found", 404)
     }
 
-    user.websites = user.websites.filter((web: any) => web.id !== websiteID)
+    user.websites = user.websites.filter((web) => web.toString() !== websiteID)
 
     const website = await this.repo.findWebsiteById(websiteID)
     if (website === null) {
@@ -178,7 +168,7 @@ export class WebsiteService {
       throw new AppError("Invalid website key", 404)
     }
 
-    website.userID = website.userID.filter((userRef: any) => userRef !== userId)
+    website.userID = website.userID.filter((userRef) => userRef.toString() !== userId)
 
     try {
       await Promise.all([
@@ -188,7 +178,6 @@ export class WebsiteService {
     } catch {
       throw new AppError("Error in saving data", 400)
     }
-
     return {
       msg: "Deleted successfully",
     }
@@ -201,9 +190,7 @@ export class WebsiteService {
       throw new AppError("Unauthorized", 403)
     }
 
-    if (
-      !user.websites.some((website: any) => websiteID == website.toString())
-    ) {
+    if (!user.websites.some((website: any) => websiteID == website.toString())) {
       throw new AppError("Website not found 1", 404)
     }
 

@@ -2,7 +2,7 @@ import { Router } from "express"
 import { authMiddleware } from "../../middleware/auth.js"
 import services from "../../middleware/services.js"
 import { websiteController } from "./website.container.js"
-import { addWebsiteSchema } from "./website.schema.js"
+import { addWebsiteSchema, deleteWebsiteSchema, generateVerificationWebsiteSchema } from "./website.schema.js"
 import { validate } from "../../middleware/validate.js"
 
 const router = Router()
@@ -13,6 +13,9 @@ router.get("/protected", authMiddleware, websiteController.getProtected)
 // Verifies a website ownership token.
 router.post("/verify", authMiddleware, websiteController.verifyWebsite)
 
+// Verifies a website ownership token.
+router.post("/verify/generate", authMiddleware, validate(generateVerificationWebsiteSchema), websiteController.generateVerificationFile)
+
 // Gets all websites for user
 router.get("/", authMiddleware, websiteController.getWebsiteForUser)
 
@@ -20,7 +23,7 @@ router.get("/", authMiddleware, websiteController.getWebsiteForUser)
 router.post("/", authMiddleware, validate(addWebsiteSchema), websiteController.addWebsite)
 
 // Removes a website from the current user.
-router.delete("/", authMiddleware, websiteController.removeWebsite)
+router.delete("/", authMiddleware, validate(deleteWebsiteSchema), websiteController.removeWebsite)
 
 // Queues a scan for a website.
 router.post("/scan", authMiddleware, services, websiteController.scanWebsite)
