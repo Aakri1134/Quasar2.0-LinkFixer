@@ -17,7 +17,8 @@
     "amqplib": "^0.10.9",
     "dotenv": "^17.4.2",
     "ioredis": "^5.8.2",
-    "puppeteer": "^24.29.0"
+    "puppeteer": "^24.29.0",
+    "uuid": "^14.0.2"
   },
   "devDependencies": {
     "@types/amqplib": "^0.10.8",

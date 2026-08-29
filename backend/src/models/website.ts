@@ -27,9 +27,25 @@ const WebsiteSchema = new mongoose.Schema(
       type: Array,
       default: [],
     },
+    traced_links: {
+      type: Array,
+      default : []
+    },
     mail_subscription: {
       type: Boolean,
       default: false,
+    },
+
+    // How often a scheduled scan should run for this website.
+    scan_frequency: {
+      type: String,
+      enum: ["off", "daily", "weekly", "monthly"],
+      default: "weekly",
+    },
+    // Timestamp of the last scan the scheduler dispatched; null until the first one runs.
+    last_scanned_at: {
+      type: Date,
+      default: null,
     },
     agree_to_terms: {
       type: [

@@ -12,6 +12,7 @@ export interface IUser {
   emailVerified: boolean;
   verificationToken?: string | null;
   verificationTokenExpires?: Date | null;
+  tokenVersion: number;
   createdAt: Date;
   updatedAt: Date;
   websites: mongoose.Types.ObjectId[];
@@ -25,10 +26,10 @@ export interface IUserMethods {
 }
 
 // Combine into the full document type
-export type UserDocument = IUser & IUserMethods & Document;
+export type UserDocument = mongoose.HydratedDocument<IUser, IUserMethods>;
 
 // Model type (needed if you add any statics later; harmless otherwise)
-type UserModel = mongoose.Model<IUser, {}, IUserMethods>;
+export type UserModel = mongoose.Model<IUser, {}, IUserMethods>;
 
 const UserSchema = new mongoose.Schema<IUser, UserModel, IUserMethods>({
   username: {
@@ -53,6 +54,11 @@ const UserSchema = new mongoose.Schema<IUser, UserModel, IUserMethods>({
   },
   verificationToken: String,
   verificationTokenExpires: Date,
+  // Bumped on logout and on password change so already-issued JWTs stop validating.
+  tokenVersion: {
+    type: Number,
+    default: 0,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
@@ -83,7 +89,12 @@ UserSchema.pre("save", async function (next) {
 
 UserSchema.methods.generateAuthToken = function () {
   return jwt.sign(
-    { id: this._id, email: this.email, emailVerified: this.emailVerified },
+    {
+      id: this._id,
+      email: this.email,
+      emailVerified: this.emailVerified,
+      tokenVersion: this.tokenVersion ?? 0,
+    },
     env.JWT_SECRET,
     { expiresIn: "1d" }
   );
@@ -97,7 +108,8 @@ UserSchema.methods.generateVerificationToken = function () {
   const jti = uuidv4();
   const verificationToken = jwt.sign(
     { id: this._id, email: this.email, iss: "link-fixer", jti },
-    env.EMAIL_SECRET
+    env.EMAIL_SECRET,
+    { expiresIn: "24h" }
   );
 
   this.verificationToken = verificationToken;
@@ -108,4 +120,4 @@ UserSchema.methods.generateVerificationToken = function () {
 
 
 
-export const User = mongoose.model("User", UserSchema);
+export const User = mongoose.model<IUser, UserModel>("User", UserSchema);

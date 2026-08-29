@@ -25,4 +25,9 @@ export class AuthRepository {
 	saveUser(user: InstanceType<typeof User>) {
 		return user.save()
 	}
+
+	// Bumps a user's token version, invalidating every JWT issued before this call.
+	incrementTokenVersion(userId: string) {
+		return User.findByIdAndUpdate(userId, { $inc: { tokenVersion: 1 } }, { new: true })
+	}
 }

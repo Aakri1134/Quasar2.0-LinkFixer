@@ -1,15 +1,24 @@
-import { createContext, useContext, useEffect } from "react"
-import useGetWebsites, { getWebsitesQueryKey } from "@/hooks/queries/website/useGetWebsites"
+import { createContext, useContext, useEffect, useState } from "react"
+import useGetWebsites, {
+  getWebsitesQueryKey,
+} from "@/hooks/queries/website/useGetWebsites"
 import { useQueryClient } from "@tanstack/react-query"
-import type { getWebsiteForUserOutput } from "@/services/api/website/websiteService.types"
+import type {
+  getWebsiteForUserOutput,
+  Website,
+} from "@/services/api/website/websiteService.types"
+import useGetWebsiteByID from "@/hooks/queries/website/useGetWebsiteByID"
+import { useSearchParams } from "react-router"
 
 type dashboardContextType = {
   websites: getWebsiteForUserOutput["website"] | undefined
-  refetchWebsite : () => Promise<void>
+  refetchWebsite: () => Promise<void>
+  currentWebsite: Website | null
+  openWebsiteID: (id: string) => void
 }
 
 const DashboardContext = createContext<dashboardContextType | undefined>(
-  undefined
+  undefined,
 )
 
 export const DashboardContextProvider = ({
@@ -17,32 +26,36 @@ export const DashboardContextProvider = ({
 }: {
   children: React.ReactNode
 }) => {
-    const {data : userWebsiteData, isLoading, isError, error} = useGetWebsites()
-    const queryClient = useQueryClient()
-    
-    const value : dashboardContextType= {
-        websites : userWebsiteData?.website,
-        refetchWebsite : async () => {
-            await queryClient.invalidateQueries({queryKey : [getWebsitesQueryKey]})
-        }
-    }
+  const { data: userWebsiteData, isLoading, isError, error } = useGetWebsites()
+  const queryClient = useQueryClient()
+  const [currentWebsiteID, setCurrentWebsiteID] = useState<string | null>(null)
+  const { data: activeWebsite } = useGetWebsiteByID(currentWebsiteID)
 
-    useEffect(() => {
-       console.log("user website data")
-        console.log(userWebsiteData)
-    }, [userWebsiteData])
+  const [searchParams, setSearchParams] = useSearchParams()
 
-    useEffect(() => {
-         console.log("Error  ::: in dashborad context")
-        console.log(isError)
-        console.log(error)
-    }, [isError, error])
+  useEffect(() => {
+    setCurrentWebsiteID(searchParams.get("active") ?? undefined)
+  }, [searchParams])
 
-    return (<DashboardContext.Provider value={value}>
-        {children}
-    </DashboardContext.Provider>)
+  const value: dashboardContextType = {
+    websites: userWebsiteData?.website,
+    refetchWebsite: async () => {
+      await queryClient.invalidateQueries({ queryKey: [getWebsitesQueryKey] })
+    },
+    currentWebsite: activeWebsite?.website ?? null,
+    openWebsiteID: (id) => {
+      setSearchParams({ active: id })
+      setCurrentWebsiteID(id)
+    },
+  }
+
+  return (
+    <DashboardContext.Provider value={value}>
+      {children}
+    </DashboardContext.Provider>
+  )
 }
 
 export const useDashboardContext = () => {
-    return useContext(DashboardContext)
+  return useContext(DashboardContext)
 }

@@ -1,5 +1,6 @@
 import api from "../instance"
 import type {
+  LogOutUser,
   SignInUser,
   SignUpUser,
   VerifyAuth,
@@ -16,6 +17,13 @@ export class AuthService {
 
   static logInUser: SignInUser = async (data) => {
     const res = await api.post(`${this.ENDPOINT}/login`, data)
+    return res.data
+  }
+
+  // Revokes the session server-side and clears the cookie. Unauthenticated and idempotent, so it
+  // is safe to call even when the cookie is already dead.
+  static logOutUser: LogOutUser = async () => {
+    const res = await api.post(`${this.ENDPOINT}/logout`)
     return res.data
   }
 

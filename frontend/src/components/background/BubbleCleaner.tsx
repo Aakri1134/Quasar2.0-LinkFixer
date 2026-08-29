@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import gif from './../../assets/giphy_final.gif'
+import gif from './../../assets/giphy_final.webp'
 
 interface ErrorBubble {
   x: number;

@@ -1,4 +1,5 @@
 import mongoose, { Schema } from "mongoose"
+import { MANAGER_TASKS } from "../workers/managers/Manager.types.js"
 
 const ChecksSchema = new mongoose.Schema(
   {
@@ -12,7 +13,12 @@ const ChecksSchema = new mongoose.Schema(
       type: Array,
       default: [],
     },
-    manager : String,
+    task: {
+      type: String,
+      enum: MANAGER_TASKS,
+      required: true,
+    },
+    manager: String,
     aiReport: String,
     duration: Number,
     updatedAt: {
@@ -26,5 +32,8 @@ const ChecksSchema = new mongoose.Schema(
   },
   { timestamps: true },
 )
+
+// Scan history is always read newest-first for one website.
+ChecksSchema.index({ website: 1, createdAt: -1 })
 
 export const Checks = mongoose.model("Check", ChecksSchema)

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import banner from "../../assets/Untitled design-min.png"
+import banner from "../../assets/Untitled design-min.webp"
 import logo from "../../assets/logo.png"
 import { useUserContext } from "../../context/userContext"
 import { Link, useNavigate } from "react-router"

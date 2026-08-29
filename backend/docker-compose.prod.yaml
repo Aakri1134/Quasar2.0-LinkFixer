@@ -1,0 +1,86 @@
+services:
+  backend:
+    env_file:
+      - .env
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: backend
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
+    depends_on:
+      - rabbitmq
+      - redis
+
+  manager:
+    env_file:
+      - .env
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: node dist/workers/managers/index.js
+    container_name: manager
+    environment:
+      - QUEUE=priority_high
+      - NEXT_QUEUE=priority_mid
+      - INSTANCES=2
+    restart: unless-stopped
+    depends_on:
+      - rabbitmq
+
+  scraper:
+    build:
+      context: ../scraper
+      dockerfile: Dockerfile
+    environment:
+      - REDIS_PUBLIC_URL=${REDIS_URL}
+      - RABBITMQ_URL=${RABBITMQ_URL}
+    shm_size: 1gb
+    restart: unless-stopped
+    depends_on:
+      - rabbitmq
+      - redis
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    container_name: rabbitmq
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
+    ports:
+      - "5672:5672"
+    restart: unless-stopped
+
+  redis:
+    image: redis:8-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  reporter:
+    env_file:
+      - .env
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: node dist/workers/reporter/index.js
+    container_name: reporter
+    depends_on:
+      - rabbitmq
+    restart: unless-stopped
+
+  # Must stay a single instance - two schedulers would enqueue every due scan twice.
+  scheduler:
+    env_file:
+      - .env
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: node dist/workers/scheduler/index.js
+    container_name: scheduler
+    depends_on:
+      - rabbitmq
+      - redis
+    restart: unless-stopped

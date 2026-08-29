@@ -3,14 +3,35 @@ import GradientButton from "@/components/button/GradientButton"
 import { FileText, Shield, Sparkles, Zap } from "lucide-react"
 import type { AnalyzePayload, HandleSubmit } from "../Home.types"
 import { useState } from "react"
+import { useNavigate } from "react-router"
+import { useUserContext } from "@/context/userContext"
+import { PENDING_URL_KEY } from "@/utils/pendingWebsite"
 
 export function HomeSection() {
   const [url, setUrl] = useState("")
+  const navigate = useNavigate()
+  const userContext = useUserContext()
 
+  // Scanning needs an account. A logged-in visitor goes straight to the dashboard with the URL in
+  // the query string. Everyone else has to sign up and verify their email first, which loses the
+  // query string somewhere along the way, so the URL is stashed and the dashboard picks it up
+  // whenever they finally arrive.
   const handleSubmit: HandleSubmit = (e) => {
     e.preventDefault()
-    const payload: AnalyzePayload = { url }
-    console.log("Analyzing URL:", payload.url)
+    const payload: AnalyzePayload = { url: url.trim() }
+    if (!payload.url) return
+
+    if (userContext?.id) {
+      navigate(`/dashboard?url=${encodeURIComponent(payload.url)}`)
+      return
+    }
+
+    try {
+      localStorage.setItem(PENDING_URL_KEY, payload.url)
+    } catch {
+      // Private mode or blocked storage - the signup still works, the prefill just does not.
+    }
+    navigate("/signup")
   }
 
   return (

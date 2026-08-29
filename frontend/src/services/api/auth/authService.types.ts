@@ -42,3 +42,9 @@ export type VerifyAuthOutput = {
 export type VerifyAuth = () => Promise<VerifyAuthOutput | null>
 
 export type VerifyMail = (token: string) => Promise<any>
+export type LogOutOutput = {
+  success: boolean
+  msg: string
+}
+
+export type LogOutUser = () => Promise<LogOutOutput>

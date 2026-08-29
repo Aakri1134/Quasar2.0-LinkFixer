@@ -18,7 +18,6 @@ export const useRegisterUser = () => {
     },
     onError: (error: AxiosError) => {
       // trigger alert about error in registering
-      console.log(error)
       toast.error((error.response?.data as any).message)
     },
   })

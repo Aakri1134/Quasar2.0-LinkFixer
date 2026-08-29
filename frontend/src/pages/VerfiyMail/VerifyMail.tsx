@@ -8,7 +8,7 @@ import { useVerifyMail } from "@/hooks/mutations/auth/useVerifyMail"
 const REDIRECT_SECONDS = 5
 const REDIRECT_PATH = "/login"
 
-export function VerifyMail() {
+export default function VerifyMail() {
   const { token } = useParams<{ token: string }>()
   const navigate = useNavigate()
 
@@ -37,16 +37,6 @@ export function VerifyMail() {
     const timeout = setTimeout(() => setSecondsLeft((s) => s - 1), 1000)
     return () => clearTimeout(timeout)
   }, [isSuccess, secondsLeft, navigate])
-
-  useEffect(() => {
-    console.log("Inside UseEffect ::::")
-    console.log(isError)
-    console.log(error)
-    console.log(isPending)
-    console.log(showError)
-    console.log(isSuccess)
-  }, [error, isError, isPending, isSuccess])
-  
 
   const missingToken = !token
   const showError = missingToken || isError
@@ -138,5 +128,3 @@ export function VerifyMail() {
     </div>
   )
 }
-
-export default VerifyMail

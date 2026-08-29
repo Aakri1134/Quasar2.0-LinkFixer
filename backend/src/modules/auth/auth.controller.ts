@@ -27,13 +27,12 @@ export class AuthController {
         return res.json(result)
     })
 
-    // Clears the auth cookie.
-    logout = asyncHandler(async (_req: Request, res: Response) => {
+    // Clears the auth cookie and revokes the token it carried.
+    logout = asyncHandler(async (req: Request, res: Response) => {
+        const cookieToken = req.cookies?.["access_token"]
+        const result = await this.service.logout(typeof cookieToken === "string" ? cookieToken : undefined)
         CookieHandler.deleteAuthCookie(res)
-        return res.json({
-            success: true,
-            msg: "Logged out successfully",
-        })
+        return res.json(result)
     })
 
     // Handles login and sets the auth cookie.

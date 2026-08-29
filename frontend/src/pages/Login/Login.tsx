@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import banner from "../../assets/Untitled design-min.png"
+import banner from "../../assets/Untitled design-min.webp"
 import logo from "../../assets/logo.png"
 import { useUserContext } from "../../context/userContext"
 import { Link, useNavigate } from "react-router"
@@ -77,10 +77,13 @@ export default function Signup() {
     >
       <Card className="bg-white shadow-xl rounded-2xl w-full max-w-sm flex flex-col items-center relative md:shadow-[8px_0px_3px_0px_rgba(0,0,0,0.3)] md:w-[380px] md:min-w-0 md:max-w-none md:h-screen md:justify-center md:rounded-none md:border-0 md:mx-0">
         <Link to="/" className="cursor-pointer w-48 mt-4 md:m-0 md:max-w-80 md:w-auto md:px-10 md:mb-0 md:absolute md:top-10">
-        <img
-          src={logo}
-          alt="logo"
-        />
+          <img
+            src={logo}
+            alt="logo"
+            className="w-full h-auto"
+            loading="lazy"
+            decoding="async"
+          />
         </Link>
         <CardHeader className=" w-full px-3 md:px-6 ">
             <h1 className=" text-xl md:text-2xl font-bold text-primary">Login</h1>
