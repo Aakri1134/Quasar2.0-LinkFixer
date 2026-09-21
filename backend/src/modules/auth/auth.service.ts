@@ -16,6 +16,10 @@ export class AuthService {
 
         const existingUser = await this.repo.findUserByEmail(email)
         if (existingUser) {
+            if (!existingUser.emailVerified) {
+                const result = await this.resendVerification({ email: existingUser.email })
+                throw new Error(result.msg)
+            }
             throw new AppError("User already exists", 400)
         }
 
@@ -67,7 +71,8 @@ export class AuthService {
         }
 
         if (!user.emailVerified) {
-            throw new AppError("Login unsuccessful. Please verify your email.", 401)
+            const result = await this.resendVerification({ email: user.email })
+            throw new Error(result.msg)
         }
 
         const token = user.generateAuthToken()

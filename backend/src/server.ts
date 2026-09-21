@@ -45,7 +45,7 @@ export const createServer = async () => {
 
   // After cors() so a 429 still carries the headers the browser needs to read it, and before the
   // body parsers so throttled requests are rejected without parsing their payload.
-  app.use("/api", apiLimiter)
+  if(env.NODE_ENV !== "dev") app.use("/api", apiLimiter)
 
   app.use(cookieParser())
   app.use(express.json())

@@ -1,17 +1,5 @@
-// Backend half of the Manager <-> Scraper wire contract.
-//
-// !! `ResultRecords` below MUST stay in sync with `LinkRecord` in `scraper/src/init/types.ts`. !!
-// The scraper RPUSHes these records onto `<domain>_results` and the Manager reads them straight back
-// into `Check.checkedLinks`, but the two types are hand-maintained in two packages with no shared
-// source. Drift does not fail loudly - the extra fields are simply dropped on the way into mongoose,
-// which is how the scraper's `metadata` / `schema` output went missing (plan.md 3.7) and how the
-// alert `detail` / `details` bug happened before it (REPORT.md P0-5).
-// Any change to `LinkRecord` must be mirrored here in the same commit, and vice versa. Task 8.3
-// replaces both with one shared contract module.
-
 import type { WebsiteQueueMessage } from "../../modules/website/website.types.js"
 
-// Mirrors the scraper's PageMetrics: Core Web Vitals captured by the `analytics` utility.
 export type ResultAnalytics =  {
   lcp?:     number  
   cls?:     number
@@ -21,8 +9,6 @@ export type ResultAnalytics =  {
   loadTime?:number 
 }
 
-// Mirrors the scraper's PageMetadata: raw SEO metadata lifted off the DOM, deliberately unscored.
-// Scoring happens in the reporter worker, which can see the whole crawl at once.
 export type ResultMetadata = {
   title: string | null
   titleLength: number

@@ -10,7 +10,7 @@ export const env = {
     // MODE_NODE is a deprecated alias kept so existing compose files keep working — NODE_ENV wins.
     // `||` not `??` on purpose: compose passes NODE_ENV through as "" when the host has not set it,
     // and an empty string would satisfy `??` and defeat the alias.
-    NODE_ENV : process.env.NODE_ENV || process.env.MODE_NODE || "dev",
+    NODE_ENV : process.env.NODE_ENV || "dev",
     // hops of reverse proxy to trust for client IPs (rate limiting); 0 = trust nothing
     TRUST_PROXY : Number.parseInt(process.env.TRUST_PROXY ?? "0"),
 
@@ -24,7 +24,7 @@ export const env = {
     EMAIL_SECRET : process.env.EMAIL_SECRET ?? "",
 
     // manager configs
-    LINK_LIMIT : Number.parseInt(process.env.LINK_LIMIT ?? "10"),
+    LINK_LIMIT : Number.parseInt(process.env.LINK_LIMIT ?? "100000"),
     INSTANCES : Number.parseInt(process.env.INSTANCES ?? "1"),
     QUEUE : process.env.QUEUE ?? "priority_low",
     // must match the tiers named in models/website.ts — "priority_mid", never "priority_medium"
