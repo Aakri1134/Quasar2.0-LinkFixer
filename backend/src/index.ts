@@ -6,7 +6,7 @@ const startServer = async () => {
   const PORT = env.PORT
 
   app.listen(PORT, () => {
-    if (process.env.MODE_NODE === "dev")
+    if (env.NODE_ENV === "dev")
       console.log(`Server running on http://localhost:${PORT}`)
     else console.log(`Server running on port ${PORT}`)
   })

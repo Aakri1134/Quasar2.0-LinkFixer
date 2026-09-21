@@ -1,7 +1,7 @@
 // StatusSubscriber.ts
 import { Redis } from "ioredis"
 import { connectRedis } from "../../database/connectRedis.js"
-import { channel } from "node:diagnostics_channel"
+import { getScraperStatusKey } from "../../utils/redisKeys.js"
 
 /**
  * Watches ONE browser's status channel in Redis and reports back whether
@@ -42,8 +42,12 @@ export class StatusSubscriber {
    * constructors in JS/TS can't be async.
    */
   static async create(uid: string): Promise<StatusSubscriber> {
+    // Its own connection, not the shared client: a Redis connection in subscriber mode cannot run
+    // ordinary commands, so this one must stay separate from the Manager's.
     const subscriber = await connectRedis()
-    return new StatusSubscriber(subscriber, `${uid}_status`)
+    // Built by the shared helper rather than inline - the scraper writes this exact key from
+    // getRedisHealthKey(), and hand-maintaining the two strings is the P0-5 failure mode.
+    return new StatusSubscriber(subscriber, getScraperStatusKey(uid))
   }
 
   /**

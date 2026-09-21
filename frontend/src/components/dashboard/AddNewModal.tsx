@@ -1,63 +1,163 @@
-import { useState } from "react"
-import Checkbox from "../card/Checkbox"
+import { Controller, useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { toast } from "sonner"
+import { Loader2, Radar } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Field, FieldGroup, FieldLabel, FieldError } from "@/components/ui/field"
+import {
+  addWebsiteSchema,
+  type AddWebsiteFormValues,
+} from "@/utils/schemas/website"
+import useAddWebsite from "@/hooks/mutations/website/useAddWebsite"
 
-const AddNewModal = () => {
-  const [subscribedMails, setSubscribedMails] = useState<boolean>(false)
-  const [agreeToTerms, setAgreeToTerms] = useState<boolean>(false)
-  const [advancedExpanded, setAdvancedExpanded] = useState<boolean>(false)
+export default function AddNewModal({
+  onSuccess,
+  initialURL = "",
+}: {
+  onSuccess?: () => void
+  // Prefilled from the ?url= the landing page hero carries through signup.
+  initialURL?: string
+}) {
+  const { mutate, isPending } = useAddWebsite()
+  const form = useForm<AddWebsiteFormValues>({
+    resolver: zodResolver(addWebsiteSchema),
+    defaultValues: {
+      baseURL: initialURL,
+      mail_subscription: false,
+      agreeToTerms: false,
+    },
+  })
+
+  const onSubmit = (payload: AddWebsiteFormValues) => {
+    mutate(payload, {
+      onSuccess: () => {
+        // The dialog stays open on failure so the entered URL is not lost; useAddWebsite already
+        // surfaces the error toast.
+        toast.success("Website added — looking for its sitemap")
+        form.reset()
+        onSuccess?.()
+      },
+    })
+  }
 
   return (
-    <div className=" w-100 h-fit p-4 bg-white rounded-xl flex flex-col">
-      <div className=" flex flex-col w-full">
-        <h1 className=" font-bold text-2xl font-mono ml-1">Add New Website</h1>
-        <div className=" h-1 bg-red-500 rounded-full"></div>
+    <div className="flex h-fit w-full flex-col gap-1 rounded-xl bg-white p-5">
+      <div className="mb-1 flex w-full flex-col">
+        <h2 className="ml-1 font-mono text-2xl font-bold">Add New Website</h2>
+        <div className="h-0.5 rounded-full bg-red-500" />
       </div>
-      <form className=" px-2 flex flex-col gap-3 w-full">
-        <label className=" w-full flex flex-col pt-4 items-stretch">
-          <h1 className=" text-lg font-semibold">
-            Enter a link from your website
-          </h1>
 
-          <input
-            name="link"
-            className=" outline rounded-lg mx-1 h-10 text-sm outline-black/30 px-2 transition-all focus:outline-2 focus:outline-black duration-50"
-            placeholder="https://example.com"
+      <form onSubmit={form.handleSubmit(onSubmit)} className="pt-2">
+        <FieldGroup>
+          {/* Base URL */}
+          <Controller
+            name="baseURL"
+            control={form.control}
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid}>
+                <FieldLabel
+                  htmlFor={field.name}
+                  className="text-sm font-semibold text-gray-700"
+                >
+                  Website URL
+                </FieldLabel>
+                <Input
+                  {...field}
+                  id={field.name}
+                  aria-invalid={fieldState.invalid}
+                  placeholder="https://example.com"
+                  className="font-mono"
+                />
+                {fieldState.invalid && (
+                  <FieldError errors={[fieldState.error]} />
+                )}
+              </Field>
+            )}
           />
-        </label>
-        <div>
-          <div className=" w-full flex justify-between">
-            <h1 className=" text-lg font-semibold">Advanced Features</h1>
-            <div onClick={() => {setAdvancedExpanded(x => !x)}} className=" font-mono cursor-pointer w-6">V</div>
+
+          {/* What happens on submit — adding a site immediately queues an eval_sitemap run. */}
+          <div className="flex gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
+            <Radar className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+            <div className="min-w-0">
+              <p className="text-xs font-medium tracking-wide text-gray-500 uppercase">
+                What happens next
+              </p>
+              <p className="mt-1 text-sm text-gray-600">
+                We will look for your sitemap and start a first scan
+                automatically. Larger sites can take several minutes — progress
+                shows up on the site page as it runs.
+              </p>
+            </div>
           </div>
-          {advancedExpanded && <div>
-            
-        <h3>Enter Sitemap link</h3>
-        <h3>Upload Sitemap</h3>
-        <h3>Select Authentication Method</h3>
-        <h3>Enter Cookie</h3>
-        <h3>Enter JWT</h3>
-        <h3>More to be added soon</h3>
-            </div>}
-        </div>
-        <Checkbox
-          name="check1"
-          label="Subscribe to mail reports"
-          checked={subscribedMails}
-          onChange={() => {
-            setSubscribedMails((x) => !x)
-          }}
-        />
-        <Checkbox
-          name="check1"
-          label="Accept Terms and Conditions"
-          checked={agreeToTerms}
-          className=" py-2"
-          onChange={() => {
-            setAgreeToTerms((x) => !x)
-          }}
-        />
+
+          {/* Mail subscription */}
+          <Controller
+            name="mail_subscription"
+            control={form.control}
+            render={({ field }) => (
+              <Field orientation="horizontal">
+                <Checkbox
+                  id={field.name}
+                  className="cursor-pointer"
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+                <FieldLabel
+                  htmlFor={field.name}
+                  className="cursor-pointer text-sm font-normal"
+                >
+                  Subscribe to mail reports
+                </FieldLabel>
+              </Field>
+            )}
+          />
+
+          {/* Terms */}
+          <Controller
+            name="agreeToTerms"
+            control={form.control}
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid}>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id={field.name}
+                    className="cursor-pointer"
+                    checked={field.value}
+                    aria-invalid={fieldState.invalid}
+                    onCheckedChange={field.onChange}
+                  />
+                  <FieldLabel
+                    htmlFor={field.name}
+                    className="cursor-pointer text-sm font-normal"
+                  >
+                    Accept Terms and Conditions
+                  </FieldLabel>
+                </div>
+                {fieldState.invalid && (
+                  <FieldError errors={[fieldState.error]} />
+                )}
+              </Field>
+            )}
+          />
+
+          <Button
+            type="submit"
+            disabled={isPending}
+            className="mt-1 w-full cursor-pointer disabled:cursor-not-allowed"
+          >
+            {isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Adding and looking for a sitemap...
+              </>
+            ) : (
+              "Add Website"
+            )}
+          </Button>
+        </FieldGroup>
       </form>
     </div>
   )
 }
-export default AddNewModal

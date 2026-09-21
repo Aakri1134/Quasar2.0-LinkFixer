@@ -1,151 +1,184 @@
-import { useEffect, useRef, useState } from "react"
-import { validator } from "../../utils/validator"
-import banner from "../../assets/Untitled design-min.png"
+import { useEffect, useState } from "react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import banner from "../../assets/Untitled design-min.webp"
 import logo from "../../assets/logo.png"
-import { logInUser } from "../../api/auth/login"
 import { useUserContext } from "../../context/userContext"
-import { useNavigate } from "react-router"
-import Input from "../../components/card/Input"
+import { Link, useNavigate } from "react-router"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { cn } from "@/lib/utils"
+import { loginSchema } from "@/utils/schemas/auth"
+import type { LoginInput } from "@/services/api/auth/authService.types"
+import { useLoginUser } from "@/hooks/mutations/auth/useLoginUser"
 // import Typography from "../../components/background/Typography"
 
-function Login() {
-  const emailInput = useRef<HTMLInputElement | null>(null)
-  const formRef = useRef<HTMLFormElement | null>(null)
-  const passwordInput = useRef<HTMLInputElement | null>(null)
+export default function Signup() {
   const [formErrorState, setFormErrorState] = useState<boolean>(false)
   const [formErrorMessage, setFormErrorMessage] = useState<string>("")
-  const [loading, setLoading] = useState<boolean>(false)
   const userContext = useUserContext()
+  const { mutate: loginUser, isPending: loading } = useLoginUser()
   const navigate = useNavigate()
 
+  const {
+    register,
+    handleSubmit,
+    setFocus,
+    formState: { errors },
+  } = useForm<LoginInput>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  })
+
   useEffect(() => {
-    userContext?.checkLogin()
-  }, [])
-  useEffect(() => {
-    // if (userContext?.email !== undefined && userContext.id !== undefined) {
-    //   navigate("/dashboard")
-    // }
+    if (userContext?.email !== undefined && userContext.id !== undefined) {
+      navigate("/dashboard")
+    }
   }, [userContext?.email, userContext?.id])
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    const emailValue = emailInput.current?.value
-    const passwordValue = passwordInput.current?.value
-
-    if (!emailValue || typeof emailValue !== "string") {
-      setFormErrorState(true)
-      setFormErrorMessage("Email Cannot be empty")
-      return
-    }
-    if (!passwordValue || typeof passwordValue !== "string") {
-      setFormErrorState(true)
-      setFormErrorMessage("Password Cannot be empty")
-      return
-    }
-
-    if (!validator(emailValue, "email")) {
-      setFormErrorState(true)
-      setFormErrorMessage("Invalid Email or Password")
-      return
-    }
-
-    // if (!validator(passwordValue, "password")) {
-    //   // trigger global error popup as either password or mail is wrong
-    // }
-    console.log(emailValue)
-    console.log(passwordValue)
-    const res = await logInUser(emailValue, passwordValue)
-    console.log("setting user context")
-    setLoading(false)
-    if (res !== null) userContext?.updateUser(res.user.email, res.user.id)
-    else {
-      setFormErrorState(true)
-      setFormErrorMessage("Invalid Email or Password")
-    }
+  const onSubmit = (values: LoginInput) => {
+    loginUser(values)
   }
 
+  const onInvalid = () => {
+    setFormErrorState(false)
+    setFormErrorMessage("")
+  }
+
+  const emailField = register("email", {
+    onChange: () => {
+      setFormErrorState(false)
+      setFormErrorMessage("")
+    },
+  })
+
+  const passwordField = register("password", {
+    onChange: () => {
+      setFormErrorState(false)
+      setFormErrorMessage("")
+    },
+  })
+
+  const errorInputClass =
+    "border-red-400 focus-visible:ring-red-400/40 focus-visible:border-red-400"
+
   return (
-    <div
-      className=" w-full h-screen flex justify-center md:justify-start "
+    <main
+      className="w-full min-h-screen flex items-center justify-center md:justify-start bg-cover bg-center bg-no-repeat p-4 md:p-0"
       style={{
         backgroundImage: `url(${banner})`,
       }}
     >
-      <div className=" bg-white shadow-[8px_0px_3px_0px_rgba(0,0,0,0.3)] w-full flex flex-col h-screen items-center px-4 py-10 md:min-w-[300px] md:w-[20%] md:h-screen justify-center relative">
-        <img
-          src={logo}
-          alt="logo"
-          className=" w-60 left-5 m-0 p-0 absolute top-10"
-        />
-        <form ref={formRef} className=" w-full" onSubmit={handleSubmit}>
-          <Input
-            label="Email"
-            placeholder="Email"
-            name="email"
-            type="text"
-            onChangeTrigger={() => {
-              setFormErrorState(false)
-              setFormErrorMessage("")
-            }}
-            errorMessage="Invalid Email"
-            validation={(value: string) => {
-              return validator(value, "email")
-            }}
-            addListeners={true}
-            enterKeyPress={() => {
-              queueMicrotask(() => {
-                passwordInput.current?.focus()
-              })
-            }}
-            ref={emailInput}
+      <Card className="bg-white shadow-xl rounded-2xl w-full max-w-sm flex flex-col items-center relative md:shadow-[8px_0px_3px_0px_rgba(0,0,0,0.3)] md:w-[380px] md:min-w-0 md:max-w-none md:h-screen md:justify-center md:rounded-none md:border-0 md:mx-0">
+        <Link to="/" className="cursor-pointer w-48 mt-4 md:m-0 md:max-w-80 md:w-auto md:px-10 md:mb-0 md:absolute md:top-10">
+          <img
+            src={logo}
+            alt="logo"
+            className="w-full h-auto"
+            loading="lazy"
+            decoding="async"
           />
-          <Input
-            ref={passwordInput}
-            label="Password"
-            onChangeTrigger={() => {
-              setFormErrorState(false)
-              setFormErrorMessage("")
-            }}
-            placeholder="Enter Password..."
-            name="password"
-            type="password"
-            errorMessage="Invalid Email or Password"
-            validation={(value: string) => {
-              return validator(value, "password")
-            }}
-            addListeners={true}
-            enterKeyPress={() => {
-              formRef.current?.requestSubmit()
-              setLoading(true)
-            }}
-          />
-          {formErrorState ? (
-            <h3 className=" w-full px-3 text-red-500 font-semibold font-mono py-0 text-md">
-              Invalid Email or Passowrd
-            </h3>
-          ) : (
-            <div className=" h-3" />
-          )}
-          <button
-            type="submit"
-            disabled={loading}
-            className=" bg-amber-500 h-12 active:translate-1 w-full text-white border-2 border-white translate-1 hover:translate-0 hover:border-black text-lg my-2 font-bold rounded-lg duration-300 transition-all"
+        </Link>
+        <CardHeader className=" w-full px-3 md:px-6 ">
+            <h1 className=" text-xl md:text-2xl font-bold text-primary">Login</h1>
+            <p className=" text-sm md:text-md font-semibold text-black/50">New User? <Link className="text-sb md:text-md font-bold px-1 text-primary" to="/signup">Sign up</Link></p>
+        </CardHeader>
+        <CardContent className="w-full px-4 md:px-8">
+          <form
+            className=" w-full flex flex-col gap-2.5"
+            onSubmit={handleSubmit(onSubmit, onInvalid)}
           >
-            {loading ? "Loading..." : "Login"}
-          </button>
-        </form>
-        <div className=" flex h-3 flex-row w-[85%] items-center gap-2">
-          <div className=" w-full bg-[#8f8f8f] h-px" />
-          <h1 className=" text-[#8f8f8f]">or</h1>
-          <div className=" w-full bg-[#8f8f8f] h-px" />
-        </div>
-        <button
-          onClick={() => {}}
-          className=" bg-amber-500 h-12 w-full active:translate-1 text-white border-2 border-white translate-1 hover:translate-0 hover:border-black text-lg my-2 font-bold rounded-lg duration-300 transition-all"
-        >
-          Google
-        </button>
-      </div>
+            <div className="flex flex-col gap-1.5">
+              <Label
+                htmlFor="email"
+                className="text-sm font-medium text-neutral-800"
+              >
+                Email
+              </Label>
+              <Input
+                id="email"
+                placeholder="name@example.com"
+                type="text"
+                className={cn(
+                  "h-12 rounded-lg text-sm border-neutral-300 focus-visible:ring-emerald-600/30 focus-visible:border-emerald-600",
+                  errors.email && errorInputClass,
+                )}
+                {...emailField}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault()
+                    queueMicrotask(() => {
+                      setFocus("password")
+                    })
+                  }
+                }}
+              />
+              {errors.email ? (
+                <p className="text-red-500 text-xs">{errors.email.message}</p>
+              ) : null}
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label
+                htmlFor="password"
+                className="text-sm font-medium text-neutral-800"
+              >
+                Password
+              </Label>
+              <Input
+                id="password"
+                placeholder="Enter password"
+                type="password"
+                className={cn(
+                  "h-12 rounded-lg text-sm border-neutral-300 focus-visible:ring-emerald-600/40 focus-visible:border-emerald-600",
+                  errors.password && errorInputClass,
+                )}
+                {...passwordField}
+              />
+              {errors.password ? (
+                <p className="text-red-500 text-xs">
+                  {errors.password.message}
+                </p>
+              ) : null}
+            </div>
+
+            {formErrorState ? (
+              <p className="text-red-500 text-xs font-medium -mt-1">
+                {formErrorMessage}
+              </p>
+            ) : null}
+
+            <Button
+              type="submit"
+              disabled={loading}
+              className="mt-1 bg-primary hover:bg-primary-hover hover:-translate-0.5 active:translate-0 h-12 w-full text-white border-2 border-white hover:border-black text-base font-bold rounded-lg duration-300 transition-all"
+            >
+              {loading ? "Loading..." : "Login"}
+            </Button>
+          </form>
+
+          <div className="flex items-center gap-1 w-full my-2">
+            <Separator className="flex-1 bg-neutral-300" />
+            <span className="text-neutral-400 text-xs uppercase tracking-wide shrink-0">
+              or
+            </span>
+            <Separator className="flex-1 bg-neutral-300" />
+          </div>
+
+          <Button
+            onClick={() => {}}
+            className="bg-primary hover:bg-primary-hover hover:-translate-0.5 active:translate-0 h-12 w-full text-white border-2 border-white hover:border-black text-base font-bold rounded-lg duration-300 transition-all"
+          >
+            Google
+          </Button>
+        </CardContent>
+      </Card>
       {/* <div className=" w-[419px] h-50 bg-[#3bb56c] hidden md:block">
         <Typography
           texts={["Website Health check made easy", "Join now"]}
@@ -155,8 +188,6 @@ function Login() {
           ]}
         />
       </div> */}
-    </div>
+    </main>
   )
 }
-
-export default Login

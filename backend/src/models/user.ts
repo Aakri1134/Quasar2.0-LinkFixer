@@ -1,10 +1,37 @@
-import mongoose, { Schema } from "mongoose";
+import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { v4 as uuidv4 } from 'uuid';
 import { env } from "../config/env.js";
 
-const UserSchema = new mongoose.Schema({
+// Plain field shape
+export interface IUser {
+  username: string;
+  email: string;
+  password: string;
+  emailVerified: boolean;
+  verificationToken?: string | null;
+  verificationTokenExpires?: Date | null;
+  tokenVersion: number;
+  createdAt: Date;
+  updatedAt: Date;
+  websites: mongoose.Types.ObjectId[];
+}
+
+// Instance methods
+export interface IUserMethods {
+  generateAuthToken(): string;
+  comparePassword(password: string): Promise<boolean>;
+  generateVerificationToken(): string;
+}
+
+// Combine into the full document type
+export type UserDocument = mongoose.HydratedDocument<IUser, IUserMethods>;
+
+// Model type (needed if you add any statics later; harmless otherwise)
+export type UserModel = mongoose.Model<IUser, {}, IUserMethods>;
+
+const UserSchema = new mongoose.Schema<IUser, UserModel, IUserMethods>({
   username: {
     type: String,
     required: true,
@@ -27,6 +54,11 @@ const UserSchema = new mongoose.Schema({
   },
   verificationToken: String,
   verificationTokenExpires: Date,
+  // Bumped on logout and on password change so already-issued JWTs stop validating.
+  tokenVersion: {
+    type: Number,
+    default: 0,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
@@ -43,69 +75,6 @@ const UserSchema = new mongoose.Schema({
   ],
 });
 
-const WebsiteSchema = new mongoose.Schema({
-  userID: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: `User`
-  }],
-  ownerID: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: `User`
-  },
-  verifiedUsers: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: `User`
-  }],
-  domain: {
-    type: String,
-    required: true,
-  },
-  sitemapLinks: {
-    type: Array,
-    default: []
-  },
-  checks: [{
-    checkedLinks: {
-      type: Array,
-      default: [],
-    },
-    aiReport: String,
-    duration: Number,
-    checkedAt: {
-      type: Date,
-      default: Date.now
-    }
-  }],
-  options: {
-    authentication: {
-      type: new mongoose.Schema({
-        cookies: {
-          type: Map,
-          of: String,
-          default: {}
-        },
-        token: {
-          type: [String],
-          default: []
-        }
-      }, { _id: false })
-    }
-  },
-  estimatedTime: {
-    priority_low: { type: Number, default: -1 },
-    priority_mid: { type: Number, default: -1 },
-    priority_high: { type: Number, default: -1 }
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now,
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  }
-}, { timestamps: true });
-
 UserSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
 
@@ -120,7 +89,12 @@ UserSchema.pre("save", async function (next) {
 
 UserSchema.methods.generateAuthToken = function () {
   return jwt.sign(
-    { id: this._id, email: this.email, emailVerified: this.emailVerified },
+    {
+      id: this._id,
+      email: this.email,
+      emailVerified: this.emailVerified,
+      tokenVersion: this.tokenVersion ?? 0,
+    },
     env.JWT_SECRET,
     { expiresIn: "1d" }
   );
@@ -134,16 +108,16 @@ UserSchema.methods.generateVerificationToken = function () {
   const jti = uuidv4();
   const verificationToken = jwt.sign(
     { id: this._id, email: this.email, iss: "link-fixer", jti },
-    env.EMAIL_SECRET
+    env.EMAIL_SECRET,
+    { expiresIn: "24h" }
   );
 
   this.verificationToken = verificationToken;
-  this.verificationTokenExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+  this.verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
   return verificationToken;
 };
 
 
 
-export const User = mongoose.model("User", UserSchema);
-export const Website = mongoose.model("Website", WebsiteSchema);
+export const User = mongoose.model<IUser, UserModel>("User", UserSchema);

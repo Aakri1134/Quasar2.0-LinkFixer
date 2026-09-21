@@ -1,0 +1,11 @@
+# Claude Code project memory / local agent context
+CLAUDE.md
+CLAUDE.local.md
+.claude/settings.local.json
+
+# OS / editor cruft
+Thumbs.db
+.DS_Store
+
+# lavish review artifacts
+.lavish/

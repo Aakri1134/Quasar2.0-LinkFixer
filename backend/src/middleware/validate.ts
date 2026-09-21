@@ -12,7 +12,6 @@ export const validate = (schema: ZodObject<any>) => (req: Request, res: Response
         next();
     } catch (error: any) {
         if (error instanceof ZodError) {
-            // Format validation errors to show which fields failed and why
             const formattedErrors = error.issues.map((issue) => {
                 const path = issue.path.join('.');
                 const errorDetail: any = {
@@ -21,7 +20,6 @@ export const validate = (schema: ZodObject<any>) => (req: Request, res: Response
                     code: issue.code,
                 };
 
-                // Add type information for invalid_type errors
                 if (issue.code === 'invalid_type') {
                     errorDetail.expected = issue.expected;
                     errorDetail.received = (issue as any).received;
@@ -30,9 +28,7 @@ export const validate = (schema: ZodObject<any>) => (req: Request, res: Response
                 return errorDetail;
             });
 
-            const validationError = new AppError('Schema Validation Failed', 400);
-            (validationError as any).validationErrors = formattedErrors;
-            return next(validationError);
+            return next(new AppError('Schema Validation Failed', 400, true, formattedErrors));
         }
         return next(error);
     }

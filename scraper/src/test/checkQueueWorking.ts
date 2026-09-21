@@ -3,6 +3,7 @@ import { connectRedis } from "../db/connectRedis.js"
 import { Scraper } from "../init/Scraper.js"
 import getRedisChannel, { getRedisCheckedLinksKey, getRedisPauseStatusKey, getRedisResultKey } from "../utils/getRedisChannel.js"
 import amqp from "amqplib"
+import { normalizeHostname } from "../utils/normalizeURLHostname.js"
 
 async function startScraper() {
   const scraper = await Scraper.init()
@@ -18,7 +19,7 @@ async function checkQueueWorking() {
 
   const initialLink = "https://iiitranchi.ac.in"
   const url = new URL(initialLink)
-  const domain = url.host
+  const domain = normalizeHostname(url.hostname)
   const limit = 100
   const maxPages = 3
   const linkQueue = domain + "_links"

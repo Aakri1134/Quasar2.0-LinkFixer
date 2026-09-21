@@ -1,4 +1,9 @@
 node_modules
 npm-debug.log
+dist
+logs
+.env.local
+.env.dev
+command.txt
 Dockerfile
 docker-compose.yml

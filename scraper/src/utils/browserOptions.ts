@@ -8,5 +8,6 @@ export const browserOptions: puppeteer.LaunchOptions = {
     "--disable-features=BlockInsecurePrivateNetworkRequests",
     "--disable-blink-features=AutomationControlled",
     "--disable-http2",
+    "--disable-back-forward-cache"
   ],
 }

@@ -1,15 +1,56 @@
-import { env } from "../../config/env.js"
 import { websiteRepository } from "../../modules/website/website.container.js"
-import { connectRedis } from "../../database/connectRedis.js"
-import { WebsiteError } from "../../modules/website/website.service.js"
 import amqp from "amqplib"
 import { connectDB } from "../../database/connectdb.js"
+import { AppError } from "../../utils/AppError.js"
+import type { WebsiteQueueMessage } from "../../modules/website/website.types.js"
+import {Redis} from "ioredis"
+import { env } from "../../config/env.js"
+import { getQueuedKey } from "../../utils/redisKeys.js"
 
-async function testManager(domain: string) {
+export async function connectRedis() {
+    const redis = new Redis(process.env.REDIS_URL_LOCAL ?? "", {enableReadyCheck : false})
+    await new Promise<void>((resolve, reject) => {
+      const onConnect = () => {
+        console.log("Connected to Redis")
+        cleanup()
+        resolve()
+      }
+
+      const onError = (error: Error) => {
+        console.log("Error in connection to Redis")
+        console.log(error)
+        cleanup()
+        reject(error)
+      }
+
+      const cleanup = () => {
+        redis.off("connect", onConnect)
+        redis.off("error", onError)
+      }
+
+      redis.once("connect", onConnect)
+      redis.once("error", onError)
+    }).catch(() => {
+      process.exit(1)
+    })
+
+    try {
+      await redis.config("SET", "maxmemory-policy", "allkeys-lfu")
+      console.log("maxmemory-policy set to allkeys-lfu")
+    } catch (error) {
+      console.error("Failed to set maxmemory-policy:", (error as Error).message)
+    }
+
+    return redis
+  }
+
+async function testManager(domain: string, sitemap_links : string[]) {
   await connectDB()
-  if (process.env.MODE_NODE !== "dev") {
+  // env.NODE_ENV, not process.env.MODE_NODE: MODE_NODE is a deprecated alias that config/env.ts
+  // resolves, and this harness must not be runnable against a non-dev environment by accident.
+  if (env.NODE_ENV !== "dev") {
     return {
-      statusCode: 123,
+      statusCode: 420,
       body: { you: "naughty" },
     }
   }
@@ -18,24 +59,22 @@ async function testManager(domain: string) {
   if (!website) {
     website = websiteRepository.createWebsite({
       domain,
-      sitemapLinks: [domain],
+      sitemap_links,
       checkedLinks: [],
       checkedAt: Date.now(),
     })
     await websiteRepository.saveWebsite(website)
   }
-
-  if (!env.REDIS_URL) {
-    throw new WebsiteError("Redis URL is not configured", 500)
-  }
+  
   const redis = await connectRedis()
-  await redis.set(`queued:${domain}`, 1)
+  await redis.set(getQueuedKey(domain), 1)
   if(!process.env.RABBITMQ_URL_LOCAL) return
   const connection = await amqp.connect(process.env.RABBITMQ_URL_LOCAL)
   const channel = await connection.createChannel()
 
   async function enqueue(queueName: string, data: string) {
     try {
+      console.log(`Sending ${data} to queue`)
       await channel.assertQueue(queueName, {
         durable: true,
       })
@@ -59,11 +98,11 @@ async function testManager(domain: string) {
     JSON.stringify({
       id: website.id,
       attempt: 0,
-    }),
+      task: "eval_links"
+    } as WebsiteQueueMessage),
   )
   
   process.exit(1)
 }
 
-console.log(process.env.RABBITMQ_URL_LOCAL)
-testManager("https://iiitranchi.ac.in")
+testManager("ogcollege.io", ["https://ogcollege.io/sitemap.xml"])

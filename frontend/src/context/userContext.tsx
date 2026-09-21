@@ -1,13 +1,17 @@
-import { createContext, useContext, useEffect, useState } from "react"
-import { validator } from "../utils/validator"
-import { verifyAuthUser } from "../api/auth/verifyAuth"
+import { createContext, useContext, useEffect } from "react"
+import {
+  useVerifyAuth,
+  verifyAuthQueryKey,
+} from "@/hooks/queries/auth/useVerifyAuth"
+import { useQueryClient } from "@tanstack/react-query"
 
 type userContextType = {
   email?: string
   id?: string
-  loading : boolean
-  updateUser: (email: string, id: string) => boolean
-  checkLogin : () => Promise<void>
+  username?: string
+  emailVerified?: boolean
+  loading: boolean
+  checkLogin: () => Promise<void>
 }
 
 const UserContext = createContext<userContextType | undefined>(undefined)
@@ -17,45 +21,24 @@ export const UserContextProvider = ({
 }: {
   children: React.ReactNode
 }) => {
-  const [email, setEmail] = useState<string | undefined>()
-  const [id, setId] = useState<string | undefined>()
-  const [loading, setLoading] = useState<boolean>(false)
+  const { data, isLoading : loading } = useVerifyAuth()
+  const queryClient = useQueryClient()
 
-  function updateUser(email: string, id: string) {
-    if (validator(email, "email")) {
-      setEmail(email)
-      setId(id)
-      console.log("User updated ", email, " ", id)
-      return true
-    }
-    return false
+  async function checkLogin() {
+    await queryClient.invalidateQueries({
+      queryKey: [verifyAuthQueryKey],
+    })
   }
+
   useEffect(() => {
-    setLoading(true)
-    checkLogin()
-  }, [])
-
-  async function checkLogin(){
-    const res = await verifyAuthUser()
-    console.log(res?.authenticated)
-    if(!res?.authenticated){
-        setEmail(undefined)
-        setId(undefined)
-    }else{
-        console.log(res.user)
-        setEmail(res.user.email)
-        setId(res.user.id)
+    if (!data?.authenticated) {
+      checkLogin()
+    } else {
+      checkLogin()
     }
-    setLoading(false)
-  }
+  }, [data])
 
-  const value: userContextType = {
-    email,
-    id,
-    updateUser,
-    checkLogin,
-    loading
-  }
+  const value: userContextType = { ...data?.user, checkLogin, loading }
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>
 }
 
